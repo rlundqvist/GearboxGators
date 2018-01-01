@@ -83,6 +83,9 @@ public class HardwareRobot
     private static int newrfTarget = 0;
     private static int newrackTarget = 0;
 
+    private static boolean driveRunning = false;
+    private static boolean rackRunning = false;
+
     // Local OpMode members.
     HardwareMap hwMap  =  null;
 
@@ -273,18 +276,20 @@ public class HardwareRobot
         //leftBackDrive.setPower(lbInches > 0.0 ? speed : -speed);
         //rightBackDrive.setPower(rbInches> 0.0 ? speed : -speed);
 
+        driveRunning = true;
     }
 
     public boolean driveBusy(){
         // TODO: Adjust when we have encoder cables and converters for back motors
         //return (leftFrontDrive.isBusy() || leftBackDrive.isBusy() || rightFrontDrive.isBusy() || rightBackDrive.isBusy());
 
-        if ((Math.abs(leftFrontDrive.getCurrentPosition()) > newlfTarget) && (Math.abs(rightFrontDrive.getCurrentPosition()) > newrfTarget)) {
+        if (driveRunning && (Math.abs(leftFrontDrive.getCurrentPosition()) > newlfTarget) && (Math.abs(rightFrontDrive.getCurrentPosition()) > newrfTarget)) {
             encodeDriveStop();
+            driveRunning = false;
             return false;
         }
         else {
-            return true;
+            return driveRunning;
         }
         //return (leftFrontDrive.isBusy() || rightFrontDrive.isBusy());
     }
@@ -300,15 +305,20 @@ public class HardwareRobot
         //rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //leftBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //rightBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        driveRunning = false;
     }
 
     public void encodeRack(double speed, double inches) {
         rackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         newrackTarget = rackDrive.getCurrentPosition() + Math.abs((int)(inches * COUNTS_PER_INCH));
 
         rackPower = inches > 0.0 ? speed : -speed;
         rackDrive.setPower(rackPower);
+
+        rackRunning = true;
+
 
 /*
         rackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -329,6 +339,7 @@ public class HardwareRobot
     public void encodeRackStop (){
         rackDrive.setPower(0);
 
+        rackRunning = false;
         //rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
@@ -336,12 +347,13 @@ public class HardwareRobot
 
     public boolean rackBusy(){
         //return rackDrive.isBusy();
-        if (Math.abs(rackDrive.getCurrentPosition()) > newrackTarget) {
+        if (rackRunning && Math.abs(rackDrive.getCurrentPosition()) > newrackTarget) {
             encodeRackStop();
+            rackRunning = false;
             return false;
         }
         else {
-            return true;
+            return rackRunning;
         }
     }
 
