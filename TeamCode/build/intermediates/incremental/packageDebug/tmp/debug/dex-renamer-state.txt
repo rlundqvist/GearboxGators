@@ -1,0 +1,4 @@
+#Thu Dec 06 14:05:25 EST 2018
+base.0=/Users/rikard/Documents/ftc_app-master/TeamCode/build/intermediates/transforms/dexMerger/debug/0
+path.0=classes.dex
+renamed.0=classes.dex
