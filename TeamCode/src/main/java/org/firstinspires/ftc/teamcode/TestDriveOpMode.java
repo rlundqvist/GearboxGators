@@ -51,7 +51,24 @@ import com.qualcomm.robotcore.util.Range;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
  */
 
-@TeleOp(name="Test Drive OpMode", group="Linear Opmode")
+/**
+ * Control capabilities expected in TeleOp mode:
+ * 1. Drive forward and fack
+ * 2. Turn left and right
+ * 3. Strafe left and right
+ * 4. Smaller/slower movements either with separate controls or ability to change speed
+ * 5. Ability to extend (lower robot) and retract (raise robot) rack and pinion
+ * 6. Quick/simple ability to extend collection arm for lunar height
+ * 7. Quick/simple ability to retract collection arm completely
+ * 8. More fine-grained control of collection arm
+ * 9. Identify minerals in hopper?
+ * 10. Wave a flag?
+ * 11. Extend one or two arms for moving minerals on floor
+ * 13. Switch on/off LED lights?
+ */
+
+
+@TeleOp(name="Test Drive", group="Linear Opmode")
 //@Disabled
 public class TestDriveOpMode extends LinearOpMode {
 
