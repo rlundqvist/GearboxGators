@@ -30,18 +30,43 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.ftccommon.SoundPlayer;
+
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.Func;
+import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
+import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
+import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.Velocity;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackableDefaultListener;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
 import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
+import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
+import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.XYZ;
+import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.YZX;
+import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
+import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.BACK;
+import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.FRONT;
 
 
 /**
@@ -55,34 +80,102 @@ import java.util.List;
  *
  * Use Android Studios to Copy this Class, and Paste it into your team's code folder with a new name.
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
+ *
+ * This 2018-2019 OpMode illustrates the basics of using the Vuforia localizer to determine
+ * positioning and orientation of robot on the FTC field.
+ * The code is structured as a LinearOpMode
+ *
+ * Vuforia uses the phone's camera to inspect it's surroundings, and attempt to locate target images.
+ *
+ * When images are located, Vuforia is able to determine the position and orientation of the
+ * image relative to the camera.  This sample code than combines that information with a
+ * knowledge of where the target images are on the field, to determine the location of the camera.
+ *
+ * This example assumes a "square" field configuration where the red and blue alliance stations
+ * are on opposite walls of each other.
+ *
+ * From the Audience perspective, the Red Alliance station is on the right and the
+ * Blue Alliance Station is on the left.
+
+ * The four vision targets are located in the center of each of the perimeter walls with
+ * the images facing inwards towards the robots:
+ *     - BlueRover is the Mars Rover image target on the wall closest to the blue alliance
+ *     - RedFootprint is the Lunar Footprint target on the wall closest to the red alliance
+ *     - FrontCraters is the Lunar Craters image target on the wall closest to the audience
+ *     - BackSpace is the Deep Space image target on the wall farthest from the audience
+ *
+ * A final calculation then uses the location of the camera on the robot to determine the
+ * robot's location and orientation on the field.
+ *
+ * @see VuforiaLocalizer
+ * @see VuforiaTrackableDefaultListener
+ * see  ftc_app/doc/tutorial/FTC_FieldCoordinateSystemDefinition.pdf
+ *
+ * Use Android Studio to Copy this Class, and Paste it into your team's code folder with a new name.
+ * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list.
+ *
+ * IMPORTANT: In order to use this OpMode, you need to obtain your own Vuforia license key as
+ * is explained below.
+ *
+ * This 2018-2019 OpMode illustrates the basics of using the TensorFlow Object Detection API to
+ * determine the position of the gold and silver minerals.
+ *
+ * Use Android Studio to Copy this Class, and Paste it into your team's code folder with a new name.
+ * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list.
+ *
+ * IMPORTANT: In order to use this OpMode, you need to obtain your own Vuforia license key as
+ * is explained below.
+ *
+ *  * {@link SensorBNO055IMU} gives a short demo on how to use the BNO055 Inertial Motion Unit (IMU) from AdaFruit.
+ *  *
+ *  * Use Android Studio to Copy this Class, and Paste it into your team's code folder with a new name.
+ *  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
+ *  *
+ *  * @see <a href="http://www.adafruit.com/products/2472">Adafruit IMU</a>
  */
 
 @Autonomous(name="Test Autonomous OpMode", group="Linear Opmode")
 //@Disabled
 public class TestAutonomousOpMode extends LinearOpMode {
+
+    // Since ImageTarget trackables use mm to specify their dimensions, we must use mm for all the physical dimension.
+    // We will define some constants and conversions here
+    private static final float mmPerInch        = 25.4f;
+    private static final float mmFTCFieldWidth  = (12*6) * mmPerInch;   // the width of the FTC field (from the center point to the outer panels)
+    private static final float mmTargetHeight   = (6) * mmPerInch;      // the height of the center of the target image above the floor
+
+    // Select which camera on the mobile that you want use.
+    // The FRONT camera is the one on the same side as the screen.
+    // Usually the back camera has higher resolution.
+    // Valid choices are:  BACK or FRONT
+    private static final VuforiaLocalizer.CameraDirection CAMERA_CHOICE = BACK;
+
+    // Define "vuforia" - the variable we will use to store our instance of the Vuforia
+    private VuforiaLocalizer vuforia;
+
+    private OpenGLMatrix lastLocation = null;
+    private boolean targetVisible = false;
+    private String targetSeen = "";
+
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
     private static final String LABEL_GOLD_MINERAL = "Gold Mineral";
     private static final String LABEL_SILVER_MINERAL = "Silver Mineral";
     private static final String VUFORIA_KEY = "AVQIvK3/////AAABmSpkdI0smUlNgdcjJD9G/vN7/679ySpR3GdwNzNg717pJ0chtCNh8z+aJVbw67Z6YMVMxURf0aqiGDxRnZEzzXsYpKXM7+iOkjQMEFkhHKzDqQTisuhPEMNaLWqnhLmu/Ejm7THmC4nKiRBHBNH4vxkaKg7nnUxpAVsuK4zsB+uo2Qk8DdixYVacY46ec/OkvYGsgJCpo3eVmaDDtKmQNnUti9KNUi8C0IhKKAVH3LLOaffxwKvSneEX8ys2rBx8DOyX+4yQGkqqKmFBVq2ACXLubogbIZsacofWSteEUM+kZT4I1VsNoZy/RUih5k0ioINE3Ze8bWSqQ5BBG0u7XkULQ/SDBocUPk4qBVNnLWQq";
 
-    /**
-     * {@link #vuforia} is the variable we will use to store our instance of the Vuforia
-     * localization engine.
-     */
-    private VuforiaLocalizer vuforia;
-
-    /**
-     * {@link #tfod} is the variable we will use to store our instance of the Tensor Flow Object
-     * Detection engine.
-     */
+   // Store our instance of the Tensor Flow Object Detection engine.
     private TFObjectDetector tfod;
 
-    // Declare OpMode members.
+    private int objectsDetected = 0;
+    private int goldIndex = -1;
+
+    // Timer used to track progress and handle time-outs
     private ElapsedTime runtime = new ElapsedTime();
+    private double timeOut;
 
-    // Declare OpMode members.
-    HardwareRobot robot           = new HardwareRobot();
 
+    private HardwareRobot robot = new HardwareRobot();
+
+    // Identifying if a particular Sound file is found and can be preloaded
     private boolean lowerFound = false;
     private boolean delatchFound = false;
     private boolean d2samplesFound = false;
@@ -97,30 +190,250 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private boolean goldFound = false;
     private boolean mineralFound = false;
 
+/*
+    private int lowerSoundID;
+    private int delatchSoundID;
+    private int d2samplesSoundID;
+    private int samplingSoundID;
+    private int movegoldSoundID;
+    private int d2allianceSoundID;
+    private int dropmarkerSoundID;
+    private int d2craterSoundID;
+    private int touchcraterSoundID;
+    private int waitingSoundID;
+    private int silverSoundID;
+    private int goldSoundID;
+    private int mineralSoundID;
+*/
+
+    private static double xCoord;
+    private static double yCoord;
+    private static double zCoord;
+    private static double roll;
+    private static double pitch;
+    private static double heading;
+
     private static final double FORWARD = 1.0;
     private static final double BACKWARD = -1.0;
     private static final double LEFT = 1.0;
     private static final double RIGHT = -1.0;
 
+    // The IMU sensor object
+    private BNO055IMU imu;
+
+    // State used for updating telemetry
+    private Orientation angles;
+    private Acceleration gravity;
+    private String systemStatusStr;
+    private String calStatusStr;
+    private static double headingIMU;
+    private static double pitchIMU;
+    private static double rollIMU;
+    private static double mag;
+
+    private enum autoStates { LOWERING, DELATCHING, MOVETO_SAMPLES, IDENTIFY_GOLD, REMOVE_GOLD, MOVETO_ALLIANCE_ZONE, DROP_MARKER, MOVETO_CRATER, LOWER_ARM, FINISHED}
+    private autoStates autoState = autoStates.LOWERING;
+
+    private static boolean newState = true;
+    private static String stateLabel = "Initializing";
+
     @Override
     public void runOpMode() {
 
-        UpdateTelemetryStatus("Initializing");
+        // TO-DOS
+        // 1. Remove logging from IMU code
+        // 2. Add telemetry status and updates to monitor progress
+        // 3. What to do if we dont know where gold is? Guess? Ignore?
+        // 4. Define new motors in the Robot class
+        // 5. Implement driving by encoder
+        // 6. Decide on strategy after Gold sampling
+        //      - there is a risk to bump into other robots and get stuck
+        //      - should we ask other teams how they drive and different modes?
+        //      - Use sensors?
+        //      - Do whatever is easiest/closest zone/crater
+        // 7. Add handling of additional sensors
+        //      - Magnetic
+        //      - Touch
+        //      - Color
+        //      - Distance
+        //      - Webcams
 
-        // The TFObjectDetector uses the camera frames from the VuforiaLocalizer, so we create that first.
-        initVuforia();
+        /************************************************
+         * Initialize the Inertial Measurement Unit - IMU
+         ************************************************/
+        // Initialize the Inertial Measurement Unit (IMU) - "Gyro"
+        // Set up the parameters with which we will use our IMU.
+        // Note that integration algorithm here just reports accelerations to the logcat log;
+        // it doesn't actually provide positional information.
+        BNO055IMU.Parameters IMUparameters = new BNO055IMU.Parameters();
+        IMUparameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES;
+        IMUparameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
+        IMUparameters.calibrationDataFile = "BNO055IMUCalibration.json"; // Created by the Calibration OpMode
+        IMUparameters.loggingEnabled      = true;
+        IMUparameters.loggingTag          = "IMU";
+        IMUparameters.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
 
+        // Retrieve and initialize the IMU. We expect the IMU to be attached to an I2C port
+        // on a Core Device Interface Module, configured to be a sensor of type "AdaFruit IMU",
+        // and named "imu".
+        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        imu.initialize(IMUparameters);
+
+
+        /*************************************************************************************************
+         *  Initialize Vuforia which is used for sample identification with Tensor Flow and for Navigation
+         *************************************************************************************************/
+        // Initialize Vuforia used for BOTH navigation and for object detection/identification through Tensor Flow
+        // The TFObjectDetector uses the camera frames from the VuforiaLocalizer
+        //
+        // Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
+        // We can pass Vuforia the handle to a camera preview resource (on the RC phone);
+        // If no camera monitor is desired, use the parameterless constructor instead (commented out below).
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
+
+        parameters.vuforiaLicenseKey = VUFORIA_KEY ;
+        parameters.cameraDirection   = CAMERA_CHOICE;
+
+        //  Instantiate the Vuforia engine
+        vuforia = ClassFactory.getInstance().createVuforia(parameters);
+
+        // Trackables are loaded to enable navigation/location only
+
+        // Load the data sets that for the trackable objects. These particular data
+        // sets are stored in the 'assets' part of our application.
+        VuforiaTrackables targetsRoverRuckus = this.vuforia.loadTrackablesFromAsset("RoverRuckus");
+        VuforiaTrackable blueRover = targetsRoverRuckus.get(0);
+        blueRover.setName("Blue-Rover");
+        VuforiaTrackable redFootprint = targetsRoverRuckus.get(1);
+        redFootprint.setName("Red-Footprint");
+        VuforiaTrackable frontCraters = targetsRoverRuckus.get(2);
+        frontCraters.setName("Front-Craters");
+        VuforiaTrackable backSpace = targetsRoverRuckus.get(3);
+        backSpace.setName("Back-Space");
+
+        // For convenience, gather together all the trackable objects in one easily-iterable collection
+        List<VuforiaTrackable> allTrackables = new ArrayList<VuforiaTrackable>();
+        allTrackables.addAll(targetsRoverRuckus);
+
+        /**
+         * In order for localization to work, we need to tell the system where each target is on the field, and
+         * where the phone resides on the robot.  These specifications are in the form of <em>transformation matrices.</em>
+         * Transformation matrices are a central, important concept in the math here involved in localization.
+         * See <a href="https://en.wikipedia.org/wiki/Transformation_matrix">Transformation Matrix</a>
+         * for detailed information. Commonly, you'll encounter transformation matrices as instances
+         * of the {@link OpenGLMatrix} class.
+         *
+         * If you are standing in the Red Alliance Station looking towards the center of the field,
+         *     - The X axis runs from your left to the right. (positive from the center to the right)
+         *     - The Y axis runs from the Red Alliance Station towards the other side of the field
+         *       where the Blue Alliance Station is. (Positive is from the center, towards the BlueAlliance station)
+         *     - The Z axis runs from the floor, upwards towards the ceiling.  (Positive is above the floor)
+         *
+         * This Rover Ruckus sample places a specific target in the middle of each perimeter wall.
+         *
+         * Before being transformed, each target image is conceptually located at the origin of the field's
+         *  coordinate system (the center of the field), facing up.
+         */
+
+        /**
+         * To place the BlueRover target in the middle of the blue perimeter wall:
+         * - First we rotate it 90 around the field's X axis to flip it upright.
+         * - Then, we translate it along the Y axis to the blue perimeter wall.
+         */
+        OpenGLMatrix blueRoverLocationOnField = OpenGLMatrix
+                .translation(0, mmFTCFieldWidth, mmTargetHeight)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 0));
+        blueRover.setLocation(blueRoverLocationOnField);
+
+        /**
+         * To place the RedFootprint target in the middle of the red perimeter wall:
+         * - First we rotate it 90 around the field's X axis to flip it upright.
+         * - Second, we rotate it 180 around the field's Z axis so the image is flat against the red perimeter wall
+         *   and facing inwards to the center of the field.
+         * - Then, we translate it along the negative Y axis to the red perimeter wall.
+         */
+        OpenGLMatrix redFootprintLocationOnField = OpenGLMatrix
+                .translation(0, -mmFTCFieldWidth, mmTargetHeight)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, 180));
+        redFootprint.setLocation(redFootprintLocationOnField);
+
+        /**
+         * To place the FrontCraters target in the middle of the front perimeter wall:
+         * - First we rotate it 90 around the field's X axis to flip it upright.
+         * - Second, we rotate it 90 around the field's Z axis so the image is flat against the front wall
+         *   and facing inwards to the center of the field.
+         * - Then, we translate it along the negative X axis to the front perimeter wall.
+         */
+        OpenGLMatrix frontCratersLocationOnField = OpenGLMatrix
+                .translation(-mmFTCFieldWidth, 0, mmTargetHeight)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0 , 90));
+        frontCraters.setLocation(frontCratersLocationOnField);
+
+        /**
+         * To place the BackSpace target in the middle of the back perimeter wall:
+         * - First we rotate it 90 around the field's X axis to flip it upright.
+         * - Second, we rotate it -90 around the field's Z axis so the image is flat against the back wall
+         *   and facing inwards to the center of the field.
+         * - Then, we translate it along the X axis to the back perimeter wall.
+         */
+        OpenGLMatrix backSpaceLocationOnField = OpenGLMatrix
+                .translation(mmFTCFieldWidth, 0, mmTargetHeight)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, XYZ, DEGREES, 90, 0, -90));
+        backSpace.setLocation(backSpaceLocationOnField);
+
+        /**
+         * Create a transformation matrix describing where the phone is on the robot.
+         *
+         * The coordinate frame for the robot looks the same as the field.
+         * The robot's "forward" direction is facing out along X axis, with the LEFT side facing out along the Y axis.
+         * Z is UP on the robot.  This equates to a bearing angle of Zero degrees.
+         *
+         * The phone starts out lying flat, with the screen facing Up and with the physical top of the phone
+         * pointing to the LEFT side of the Robot.  It's very important when you test this code that the top of the
+         * camera is pointing to the left side of the  robot.  The rotation angles don't work if you flip the phone.
+         *
+         * If using the rear (High Res) camera:
+         * We need to rotate the camera around it's long axis to bring the rear camera forward.
+         * This requires a negative 90 degree rotation on the Y axis
+         *
+         * If using the Front (Low Res) camera
+         * We need to rotate the camera around it's long axis to bring the FRONT camera forward.
+         * This requires a Positive 90 degree rotation on the Y axis
+         *
+         * Next, translate the camera lens to where it is on the robot.
+         * In this example, it is centered (left to right), but 110 mm forward of the middle of the robot, and 200 mm above ground level.
+         */
+
+        final int CAMERA_FORWARD_DISPLACEMENT  = 110;   // eg: Camera is 110 mm in front of robot center
+        final int CAMERA_VERTICAL_DISPLACEMENT = 200;   // eg: Camera is 200 mm above ground
+        final int CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
+
+        OpenGLMatrix phoneLocationOnRobot = OpenGLMatrix
+                .translation(CAMERA_FORWARD_DISPLACEMENT, CAMERA_LEFT_DISPLACEMENT, CAMERA_VERTICAL_DISPLACEMENT)
+                .multiplied(Orientation.getRotationMatrix(EXTRINSIC, YZX, DEGREES,
+                        CAMERA_CHOICE == FRONT ? 90 : -90, 0, 0));
+
+        /**  Let all the trackable listeners know where the phone is.  */
+        for (VuforiaTrackable trackable : allTrackables)
+        {
+            ((VuforiaTrackableDefaultListener)trackable.getListener()).setPhoneInformation(phoneLocationOnRobot, parameters.cameraDirection);
+        }
+
+        // Validate that a Tensor Flow object can be created
         if (ClassFactory.getInstance().canCreateTFObjectDetector()) {
-            initTfod();
+            int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
+                    "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+            TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
+            tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
+            tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
         } else {
             telemetry.addData("Sorry!", "This device is not compatible with TFOD");
         }
 
-
-        // Initialize the hardware variables.
-        // The init() method of the hardware class does all the work here
-        robot.init(hardwareMap);
-
+        /***************************************************************
+         * Initialize all sounds and validate that they can be preloaded
+         ***************************************************************/
         // Determine Resource IDs for sounds built into the RC application.
         int lowerSoundID = hardwareMap.appContext.getResources().getIdentifier("lower","raw", hardwareMap.appContext.getPackageName());
         int delatchSoundID = hardwareMap.appContext.getResources().getIdentifier("delatch","raw", hardwareMap.appContext.getPackageName());
@@ -135,7 +448,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
         int silverSoundID = hardwareMap.appContext.getResources().getIdentifier("silver","raw", hardwareMap.appContext.getPackageName());
         int goldSoundID = hardwareMap.appContext.getResources().getIdentifier("gold","raw", hardwareMap.appContext.getPackageName());
         int mineralSoundID = hardwareMap.appContext.getResources().getIdentifier("object","raw", hardwareMap.appContext.getPackageName());
-
 
         // Determine if sound resources are found.
         // Note: Preloading is NOT required, but it's a good way to verify all your sounds are available before you run.
@@ -170,44 +482,100 @@ public class TestAutonomousOpMode extends LinearOpMode {
         telemetry.update();
 
 
-        UpdateTelemetryStatus("Waiting for User Action START");
+        // Initialize the hardware variables.
+        // The init() method of the hardware class does all the work here
+        robot.init(hardwareMap);
 
-        // Wait for the game to start (driver presses PLAY)
+        // Wait for the game to start (driver presses PLAY button on Driver Station)
         waitForStart();
+
+        /**************************
+         * Starting Autonomous 30s
+         *************************/
         runtime.reset();
 
+        // Start the logging of measured acceleration
+        // Not sure this is needed
+        imu.startAccelerationIntegration(new Position(), new Velocity(), 1000);
 
-        // Lower
-        if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
-        UpdateTelemetryStatus("Lowering");
-        sleep(5000);
+        // Start tracking the data sets we care about.
+        targetsRoverRuckus.activate();
 
-        // De-latch
-        if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
-        UpdateTelemetryStatus("De-latching");
-        sleep(3000);
-
-        // Drive to samples
-        if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
-        DriveForward(3000);
-
-        // Sampling
-        if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
-        UpdateTelemetryStatus("Identifying gold through sampling");
-
-        /** Activate Tensor Flow Object Detection. */
+        // Activate Tensor Flow Object Detection
         if (tfod != null) {
             tfod.activate();
         }
-        double startTime = runtime.seconds();
-        while (opModeIsActive() && (runtime.seconds()<(startTime+20))) {
-            if (tfod != null) {
+
+
+        /*******************************************************************************************
+         *  RUNNING in Autonomous Mode
+         *******************************************************************************************/
+        while (opModeIsActive()) {
+
+            /*************************************************************
+             * Update IMU-based angels and gravity in ALL autonomous modes
+             *************************************************************/
+            angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+            gravity  = imu.getGravity();
+
+            // Acquiring the angles is relatively expensive; we don't want
+            // to do that in each of the three items that need that info, as that's
+            // three times the necessary expense.
+            angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+            gravity  = imu.getGravity();
+            systemStatusStr = imu.getSystemStatus().toShortString();
+            calStatusStr = imu.getCalibrationStatus().toString();
+            headingIMU = angles.firstAngle;
+            rollIMU = angles.secondAngle;
+            pitchIMU = angles.thirdAngle;
+            mag = Math.sqrt(gravity.xAccel*gravity.xAccel  + gravity.yAccel*gravity.yAccel + gravity.zAccel*gravity.zAccel);
+
+
+            /********************************************************************
+             *  Aim to perform Vuforia-based positioning in ALL autonomous stages
+             ********************************************************************/
+            // Check all the trackable target to see which one (if any) is visible.
+            targetVisible = false;
+            for (VuforiaTrackable trackable : allTrackables) {
+                if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
+                    telemetry.addData("Visible Target", trackable.getName());
+                    targetVisible = true;
+
+                    // getUpdatedRobotLocation() will return null if no new information is available since
+                    // the last time that call was made, or if the trackable is not currently visible.
+                    OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
+                    if (robotLocationTransform != null) {
+                        lastLocation = robotLocationTransform; // Update with new position
+                        VectorF translation = lastLocation.getTranslation();
+                        xCoord = translation.get(0) / mmPerInch;
+                        yCoord = translation.get(1) / mmPerInch;
+                        zCoord = translation.get(2) / mmPerInch;
+                        Orientation rotation = Orientation.getOrientation(lastLocation, EXTRINSIC, XYZ, DEGREES);
+                        roll = rotation.firstAngle;
+                        pitch = rotation.secondAngle;
+                        heading = rotation.thirdAngle;
+                    }
+                    break;
+                }
+            }
+
+            /**************************************************************************************
+             * Aim to identify which out of three minerals is GOLD using Vuforia and Tensor Flow
+             * in LOWERING, DELATCHING, MOVETO_SAMPLES and IDENTIFY_GOLD states.
+             * Ideally we will have identified where the Gold is long before we have moved out to
+             * the sample area.
+             * Stop doing it once the position of the Gold mineral has been successfully identified
+             **************************************************************************************/
+            if (tfod != null &&    // Tensor Flow is running
+                    goldIndex != -1 &&  // Gold has not yet been identified
+                    (autoState == autoStates.LOWERING || autoState == autoStates.DELATCHING ||
+                            autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
+
                 // getUpdatedRecognitions() will return null if no new information is available since
                 // the last time that call was made.
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
-                    telemetry.addData("# Object Detected", updatedRecognitions.size());
-                    if (mineralFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, mineralSoundID);
+                    objectsDetected = updatedRecognitions.size();
                     if (updatedRecognitions.size() == 3) {
                         int goldMineralX = -1;
                         int silverMineral1X = -1;
@@ -222,55 +590,240 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             }
                         }
                         if (goldMineralX != -1 && silverMineral1X != -1 && silverMineral2X != -1) {
-                            if (goldMineralX < silverMineral1X && goldMineralX < silverMineral2X) {
-                                telemetry.addData("Gold Mineral Position", "Left");
-                            } else if (goldMineralX > silverMineral1X && goldMineralX > silverMineral2X) {
-                                telemetry.addData("Gold Mineral Position", "Right");
-                            } else {
-                                telemetry.addData("Gold Mineral Position", "Center");
-                            }
+                            // All minerals have been identified
+                            goldIndex = goldMineralX;
+                            if (mineralFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, mineralSoundID);
                         }
                     }
-                    telemetry.update();
                 }
             }
+
+            switch (autoState) {
+
+                /****************************************************************************
+                 * First state after Autonomous mode has been initiated.
+                 * Lower robot to ground by extending rack & pinion to predetermined position
+                 * While robot is being lowered, Tensor Flow aims to identify how the minerals
+                 * in the sampling field are ordered.
+                 ****************************************************************************/
+                case LOWERING: {
+                    if (newState) {
+                        stateLabel = "Lowering robot to ground";
+                        if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
+                        newState = false;
+                        // Start driving rack to full position using encoder
+                        timeOut = runtime.milliseconds() + 5000;
+//                    } else if (!robot.rackDrive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (runtime.milliseconds()>timeOut){
+                        // Stop rack-motor
+                        autoState = autoStates.DELATCHING;
+                        newState = true;
+                    }
+                }
+
+                /*********************************************************************************
+                 * Robot has reached the ground. Move sideways to disconnect from the lunar lander
+                 * While moving the robot sideways, Tensor Flow aims to identify how the minerals
+                 * in the sampling field are ordered.
+                 *********************************************************************************/
+                case DELATCHING: {
+                    if (newState) {
+                        stateLabel = "Disconnecting from lunar latch";
+                        if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
+                        newState = false;
+                        // Move sideways for a few inches
+                        timeOut = runtime.milliseconds() + 1000;
+//                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (runtime.milliseconds()>timeOut){
+                        // Stop rack-motor
+                        autoState = autoStates.DELATCHING;
+                        newState = true;
+                    }
+                }
+
+                /*********************************************************************************
+                 * Robot has disconnected from the lunar lander and is driving towards the mineral
+                 * sampling location. While driving, Tensor Flow aims to identify how the minerals
+                 * are ordered.
+                 *********************************************************************************/
+                case MOVETO_SAMPLES: {
+                    if (newState) {
+                        stateLabel = "Moving to sampling-area";
+                        if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
+                        newState = false;
+                        // Move out to the sampling area
+                        // Using coordinates or relative measurements?
+                        timeOut = runtime.milliseconds() + 4000;
+//                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (runtime.milliseconds()>timeOut){
+                        // Stop motors
+                        autoState = autoStates.IDENTIFY_GOLD;
+                        newState = true;
+                    }
+                }
+
+                /*******************************************************************************
+                 * Robot is standing in front of the three mineral samples. If we havent already,
+                 * we are now attempting to identify where the Gold is located:
+                 *  -1: We do not know where it is
+                 *   0: The Gold is to the left   (GOLD - SILVER - SILVER)
+                 *   1: The Gold is in the middle (SILVER - GOLD - SILVER)
+                 *   2: The Gold is to the right  (SILVER - SILVER - GOLD)
+                 * We attempt to identify the location in already BEFORE we stop in front of
+                 * the samples.
+                 ******************************************************************************/
+                case IDENTIFY_GOLD: {
+                    if (newState) {
+                        stateLabel = "Identifying where the Gold is";
+                        if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 2000;
+                    }
+                    if (goldIndex != -1 || (runtime.milliseconds()>timeOut))  {
+                        // Stop Tensor Flow
+                         if (tfod != null) {
+                            tfod.shutdown();
+                        }
+                        autoState = autoStates.REMOVE_GOLD;
+                        newState = true;
+                        if (goldIndex == -1) {
+                            // We have not figured out where the gold is...
+                            // Shall we guess with 1/3 chance....or avoid ALL samples and just drive around?
+                        } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
+                    }
+                }
+
+                /********************************************************************************
+                 * Moving the robot so that we push the Gold mineral away from the sampling area
+                 * A goldIndex of -1 will simply be ignored and robot will do NOTHING
+                 ********************************************************************************/
+                case REMOVE_GOLD: {
+                    if (newState && goldIndex != -1) {
+                        stateLabel = "Moving the Gold mineral";
+                        if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 4000;
+                        // Use goldIndex to figure out where to go
+                    } else if (runtime.milliseconds()>timeOut || goldIndex == -1)  {
+                       // Stop any motors
+                       autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                       newState = true;
+                    }
+                }
+
+                /**********************************************************************************
+                 * Drive to OUR alliance zone. Use position to identify where we are starting.
+                 * Must implement sensors and/or different modes to avoid the other robots.
+                 * Avoid touching mineral samples, lunar lander and other robots.
+                 * Consider using color sensor under the robot to identify when we are inside the
+                 * alliance zone.
+                 **********************************************************************************/
+                case MOVETO_ALLIANCE_ZONE: {
+                    if (newState) {
+                        stateLabel = "Moving to Alliance Zone";
+                        if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 5000;
+                        // Move to alliance area...
+                    }
+                    else if (runtime.milliseconds() > timeOut) {
+                        // Stop any movement
+                        autoState = autoStates.DROP_MARKER;
+                        newState = true;
+                    }
+                }
+
+                /**********************************************************************************
+                 * Robot has reached the alliance zone. Drop the team marker in a way so that it
+                 * stays within the alliance zone. If using the large mineral collection mechanism,
+                 * consider what happens if team marker is dropped from high level.
+                 **********************************************************************************/
+                case DROP_MARKER: {
+                    if (newState) {
+                        stateLabel = "Dropping team marker";
+                        if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 1500;
+                        // Move motors to drop marker
+                    } else if (runtime.milliseconds() > timeOut) {
+                        // Stop all movement
+                        autoState = autoStates.MOVETO_CRATER;
+                        newState = true;
+                    }
+                }
+
+                /**********************************************************************************
+                 * Robot move to (closest?) crater regardless of its current location
+                 **********************************************************************************/
+                case MOVETO_CRATER: {
+                    if (newState) {
+                        stateLabel = "Moving to crater";
+                        if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 5000;
+                        // Move motors to drop marker
+                    } else if (runtime.milliseconds() > timeOut) {
+                        // Stop all movement
+                        autoState = autoStates.LOWER_ARM;
+                        newState = true;
+                    }
+
+                }
+
+                /**********************************************************************************
+                 * Robot has reached the edge of the crater. Lower the collection arm to make
+                 * we touch the crater and get points.
+                 **********************************************************************************/
+                case LOWER_ARM: {
+                    if (newState) {
+                        stateLabel = "Lovering arm to crater";
+                        if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 1000;
+                        // Move motors to drop marker
+                    } else if (runtime.milliseconds() > timeOut) {
+                        // Stop all movement
+                        autoState = autoStates.FINISHED;
+                        newState = true;
+                    }
+                }
+
+                /**********************************************************************************
+                 * All commands are executed, waiting until Autonomous is over, user terminates or
+                 * function times out
+                 **********************************************************************************/
+                case FINISHED: {
+                    if (newState) {
+                        stateLabel = "Waiting until autonomous is done";
+                        if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 5000;
+                    } else if (runtime.milliseconds() > timeOut) {
+                        break;
+                    }
+                }
+
+                /**********************************************************************************
+                 * For every WHILE loop during the autonomous mode we update the telemetry data
+                 **********************************************************************************/
+                telemetry.addData("Run-time", runtime.toString());
+                telemetry.addData("Status", stateLabel);
+                telemetry.addData("IMU", "Angles = %.1f, Gravity = %.1f, Magnetic = %.1ff", gravity, mag);
+                telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rollIMU, pitchIMU, headingIMU);
+                telemetry.addData("  Sys & Cal", systemStatusStr+calStatusStr);
+                if (targetVisible) { // Do we have a valid position from Vuforia?
+                    telemetry.addData("Vuforia Target ", targetSeen);
+                    telemetry.addData("  Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f", xCoord, yCoord, zCoord);
+                    telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", roll, pitch, heading);
+                }
+                else {
+                    telemetry.addData("Vuforia Target ", "none");
+                }
+                telemetry.addData("Objects", "%i  -  Gold Index:%i", objectsDetected, goldIndex);
+                telemetry.update();
+
+            }
         }
-
-        if (tfod != null) {
-            tfod.shutdown();
-        }
-
-
-        // Move Silver Sample
-        if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
-        UpdateTelemetryStatus("Removing silver");
-        sleep(3000);
-
-        // Drive to Alliance Area
-        if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
-        TurnLeft(1000);
-        DriveForward(5000);
-
-        // Drop Team Marker
-        if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
-        UpdateTelemetryStatus("Dropping team market");
-        sleep(3000);
-
-        // Drive to Crater
-        if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
-        DriveBackward(1000);
-        TurnRight(4000);
-        DriveForward(6000);
-
-        // Touch Crater
-        if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
-        UpdateTelemetryStatus("Touching crater wall");
-        sleep(3000);
-
-        // Autonomous Waiting
-        if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
-        UpdateTelemetryStatus("Autonomous mode over");
-
     }
 
     void DriveForward (double milliseconds) {
@@ -330,35 +883,4 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
         telemetry.update();
     }
-
-
-    /**
-     * Initialize the Vuforia localization engine.
-     */
-    private void initVuforia() {
-        /*
-         * Configure Vuforia by creating a Parameter object, and passing it to the Vuforia engine.
-         */
-        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters();
-
-        parameters.vuforiaLicenseKey = VUFORIA_KEY;
-        parameters.cameraDirection = CameraDirection.BACK;
-
-        //  Instantiate the Vuforia engine
-        vuforia = ClassFactory.getInstance().createVuforia(parameters);
-
-        // Loading trackables is not necessary for the Tensor Flow Object Detection engine.
-    }
-
-    /**
-     * Initialize the Tensor Flow Object Detection engine.
-     */
-    private void initTfod() {
-        int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
-                "tfodMonitorViewId", "id", hardwareMap.appContext.getPackageName());
-        TFObjectDetector.Parameters tfodParameters = new TFObjectDetector.Parameters(tfodMonitorViewId);
-        tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
-        tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_GOLD_MINERAL, LABEL_SILVER_MINERAL);
-    }
-
 }
