@@ -134,7 +134,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
  *  * @see <a href="http://www.adafruit.com/products/2472">Adafruit IMU</a>
  */
 
-@Autonomous(name="Test Autonomous OpMode", group="Linear Opmode")
+@Autonomous(name="Concept: Autonomous OpMode", group="Linear Opmode")
 //@Disabled
 public class TestAutonomousOpMode extends LinearOpMode {
 
@@ -165,8 +165,8 @@ public class TestAutonomousOpMode extends LinearOpMode {
    // Store our instance of the Tensor Flow Object Detection engine.
     private TFObjectDetector tfod;
 
-    private int objectsDetected = 0;
-    private int goldIndex = -1;
+    private static int objectsDetected = 0;
+    private static int goldIndex = -1;
 
     // Timer used to track progress and handle time-outs
     private ElapsedTime runtime = new ElapsedTime();
@@ -189,22 +189,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private boolean silverFound = false;
     private boolean goldFound = false;
     private boolean mineralFound = false;
-
-/*
-    private int lowerSoundID;
-    private int delatchSoundID;
-    private int d2samplesSoundID;
-    private int samplingSoundID;
-    private int movegoldSoundID;
-    private int d2allianceSoundID;
-    private int dropmarkerSoundID;
-    private int d2craterSoundID;
-    private int touchcraterSoundID;
-    private int waitingSoundID;
-    private int silverSoundID;
-    private int goldSoundID;
-    private int mineralSoundID;
-*/
 
     private static double xCoord;
     private static double yCoord;
@@ -240,6 +224,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
     @Override
     public void runOpMode() {
 
+        telemetry.addData("State", "Initializing... (0%)");
+        telemetry.addData("IMU", "Init")
+        telemetry.update();
         // TO-DOS
         // 1. Remove logging from IMU code
         // 2. Add telemetry status and updates to monitor progress
@@ -278,6 +265,11 @@ public class TestAutonomousOpMode extends LinearOpMode {
         // and named "imu".
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(IMUparameters);
+
+        telemetry.addData("State", "Initializing... (60%)");
+        telemetry.addData("IMU","DONE");
+        telemetry.addData("Vuforia", "Navigation Init");
+        telemetry.update();
 
 
         /*************************************************************************************************
@@ -420,6 +412,12 @@ public class TestAutonomousOpMode extends LinearOpMode {
             ((VuforiaTrackableDefaultListener)trackable.getListener()).setPhoneInformation(phoneLocationOnRobot, parameters.cameraDirection);
         }
 
+        telemetry.addData("State", "Initializing... (70%)");
+        telemetry.addData("IMU","DONE");
+        telemetry.addData("Vuforia", "DONE");
+        telemetry.addData("Tensor Flow", "Object Detection Init");
+        telemetry.update();
+
         // Validate that a Tensor Flow object can be created
         if (ClassFactory.getInstance().canCreateTFObjectDetector()) {
             int tfodMonitorViewId = hardwareMap.appContext.getResources().getIdentifier(
@@ -434,6 +432,13 @@ public class TestAutonomousOpMode extends LinearOpMode {
         /***************************************************************
          * Initialize all sounds and validate that they can be preloaded
          ***************************************************************/
+        telemetry.addData("State", "Initializing... (80%)");
+        telemetry.addData("IMU","DONE");
+        telemetry.addData("Vuforia", "DONE");
+        telemetry.addData("Tensor Flow", "DONE");
+        telemetry.addData("Sound Resources", "Pre-loading");
+        telemetry.update();
+
         // Determine Resource IDs for sounds built into the RC application.
         int lowerSoundID = hardwareMap.appContext.getResources().getIdentifier("lower","raw", hardwareMap.appContext.getPackageName());
         int delatchSoundID = hardwareMap.appContext.getResources().getIdentifier("delatch","raw", hardwareMap.appContext.getPackageName());
@@ -465,26 +470,44 @@ public class TestAutonomousOpMode extends LinearOpMode {
         if (goldSoundID != 0) goldFound = SoundPlayer.getInstance().preload(hardwareMap.appContext, goldSoundID);
         if (mineralSoundID != 0) mineralFound = SoundPlayer.getInstance().preload(hardwareMap.appContext, mineralSoundID);
 
-        // Display sound status
-        telemetry.addData("lower resource", lowerFound ? "Found" : "NOT found\n Add lower.wav to /src/main/res/raw" );
-        telemetry.addData("delatch resource", delatchFound ? "Found" : "Not found\n Add delatch.wav to /src/main/res/raw" );
-        telemetry.addData("drive to sample resource", d2samplesFound ? "Found" : "Not found\n Add d2samples.wav to /src/main/res/raw" );
-        telemetry.addData("sampling resource", samplingFound ? "Found" : "Not found\n Add sampling.wav to /src/main/res/raw" );
-        telemetry.addData("move silver resource", movegoldFound ? "Found" : "Not found\n Add movesilver.wav to /src/main/res/raw" );
-        telemetry.addData("drive to alliance resource", d2allianceFound ? "Found" : "Not found\n Add  d2alliance.wav to /src/main/res/raw" );
-        telemetry.addData("drop marker resource", dropmarkerFound ? "Found" : "Not found\n Add dropmarker.wav to /src/main/res/raw" );
-        telemetry.addData("drive to crater resource", d2craterFound ? "Found" : "Not found\n Add d2crater.wav to /src/main/res/raw" );
-        telemetry.addData("touch crater resource", touchcraterFound ? "Found" : "Not found\n Add touchcrater.wav to /src/main/res/raw" );
-        telemetry.addData("waiting resource", waitingFound ? "Found" : "Not found\n Add waiting.wav to /src/main/res/raw" );
-        telemetry.addData("silver resource", d2craterFound ? "Found" : "Not found\n Add silver.wav to /src/main/res/raw" );
-        telemetry.addData("gold resource", touchcraterFound ? "Found" : "Not found\n Add gold.wav to /src/main/res/raw" );
-        telemetry.addData("mineral resource", waitingFound ? "Found" : "Not found\n Add mineral.wav to /src/main/res/raw" );
+        telemetry.addData("State", "Initializing... (90%)");
+        telemetry.addData("IMU","DONE");
+        telemetry.addData("Vuforia", "DONE");
+        telemetry.addData("Tensor Flow", "DONE");
+        telemetry.addData("Sound Resources", "DONE");
+        telemetry.addData("Robot", "Hardware Init");
         telemetry.update();
+
+        // Display sound status
+//        telemetry.addData("lower resource", lowerFound ? "Found" : "NOT found\nAdd lower.wav to /src/main/res/raw" );
+//        telemetry.addData("delatch resource", delatchFound ? "Found" : "Not found\nAdd delatch.wav to /src/main/res/raw" );
+//        telemetry.addData("drive to sample resource", d2samplesFound ? "Found" : "Not found\nAdd d2samples.wav to /src/main/res/raw" );
+//        telemetry.addData("sampling resource", samplingFound ? "Found" : "Not found\n dd sampling.wav to /src/main/res/raw" );
+//        telemetry.addData("move silver resource", movegoldFound ? "Found" : "Not found\nAdd movesilver.wav to /src/main/res/raw" );
+//        telemetry.addData("drive to alliance resource", d2allianceFound ? "Found" : "Not found\nAdd  d2alliance.wav to /src/main/res/raw" );
+//        telemetry.addData("drop marker resource", dropmarkerFound ? "Found" : "Not found\nAdd dropmarker.wav to /src/main/res/raw" );
+//        telemetry.addData("drive to crater resource", d2craterFound ? "Found" : "Not found\nAdd d2crater.wav to /src/main/res/raw" );
+//        telemetry.addData("touch crater resource", touchcraterFound ? "Found" : "Not found\nAdd touchcrater.wav to /src/main/res/raw" );
+//        telemetry.addData("waiting resource", waitingFound ? "Found" : "Not found\nAdd waiting.wav to /src/main/res/raw" );
+//        telemetry.addData("silver resource", d2craterFound ? "Found" : "Not found\nAdd silver.wav to /src/main/res/raw" );
+//        telemetry.addData("gold resource", touchcraterFound ? "Found" : "Not found\nAdd gold.wav to /src/main/res/raw" );
+//        telemetry.addData("mineral resource", waitingFound ? "Found" : "Not found\nAdd mineral.wav to /src/main/res/raw" );
+//        telemetry.update();
 
 
         // Initialize the hardware variables.
         // The init() method of the hardware class does all the work here
         robot.init(hardwareMap);
+
+        telemetry.addData("State", "READY to go - Press PLAY");
+        telemetry.addData("IMU","DONE");
+        telemetry.addData("Vuforia", "DONE");
+        telemetry.addData("Tensor Flow", "DONE");
+        telemetry.addData("Sound Resources", "DONE");
+        telemetry.addData("Robot", "DONE");
+        telemetry.update();
+
+        autoState = autoStates.LOWERING;;
 
         // Wait for the game to start (driver presses PLAY button on Driver Station)
         waitForStart();
@@ -506,6 +529,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
             tfod.activate();
         }
 
+        int tmpCounter = 0;
 
         /*******************************************************************************************
          *  RUNNING in Autonomous Mode
@@ -536,10 +560,11 @@ public class TestAutonomousOpMode extends LinearOpMode {
              ********************************************************************/
             // Check all the trackable target to see which one (if any) is visible.
             targetVisible = false;
+            targetSeen = " ";
             for (VuforiaTrackable trackable : allTrackables) {
                 if (((VuforiaTrackableDefaultListener)trackable.getListener()).isVisible()) {
-                    telemetry.addData("Visible Target", trackable.getName());
                     targetVisible = true;
+                    targetSeen = trackable.getName();
 
                     // getUpdatedRobotLocation() will return null if no new information is available since
                     // the last time that call was made, or if the trackable is not currently visible.
@@ -566,16 +591,17 @@ public class TestAutonomousOpMode extends LinearOpMode {
              * the sample area.
              * Stop doing it once the position of the Gold mineral has been successfully identified
              **************************************************************************************/
-            if (tfod != null &&    // Tensor Flow is running
-                    goldIndex != -1 &&  // Gold has not yet been identified
+            if ((tfod != null) &&    // Tensor Flow is running
+                    (goldIndex == -1) &&  // Gold has not yet been identified
                     (autoState == autoStates.LOWERING || autoState == autoStates.DELATCHING ||
-                            autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
+                         autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
 
                 // getUpdatedRecognitions() will return null if no new information is available since
                 // the last time that call was made.
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
                     objectsDetected = updatedRecognitions.size();
+                    telemetry.addData("Tensor Flow", "Objects Detected %d", objectsDetected);
                     if (updatedRecognitions.size() == 3) {
                         int goldMineralX = -1;
                         int silverMineral1X = -1;
@@ -606,61 +632,61 @@ public class TestAutonomousOpMode extends LinearOpMode {
                  * While robot is being lowered, Tensor Flow aims to identify how the minerals
                  * in the sampling field are ordered.
                  ****************************************************************************/
-                case LOWERING: {
+                case LOWERING:
                     if (newState) {
                         stateLabel = "Lowering robot to ground";
                         if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
                         newState = false;
                         // Start driving rack to full position using encoder
-                        timeOut = runtime.milliseconds() + 5000;
+                        timeOut = runtime.milliseconds() + 10000;
 //                    } else if (!robot.rackDrive.isBusy() || (runtime.milliseconds()>timeOut)){
                     } else if (runtime.milliseconds()>timeOut){
                         // Stop rack-motor
                         autoState = autoStates.DELATCHING;
                         newState = true;
                     }
-                }
+                    break;
 
                 /*********************************************************************************
                  * Robot has reached the ground. Move sideways to disconnect from the lunar lander
                  * While moving the robot sideways, Tensor Flow aims to identify how the minerals
                  * in the sampling field are ordered.
                  *********************************************************************************/
-                case DELATCHING: {
+                case DELATCHING:
                     if (newState) {
                         stateLabel = "Disconnecting from lunar latch";
                         if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
                         newState = false;
                         // Move sideways for a few inches
-                        timeOut = runtime.milliseconds() + 1000;
+                        timeOut = runtime.milliseconds() + 10000;
 //                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
                     } else if (runtime.milliseconds()>timeOut){
                         // Stop rack-motor
-                        autoState = autoStates.DELATCHING;
+                        autoState = autoStates.MOVETO_SAMPLES;
                         newState = true;
                     }
-                }
+                    break;
 
                 /*********************************************************************************
                  * Robot has disconnected from the lunar lander and is driving towards the mineral
                  * sampling location. While driving, Tensor Flow aims to identify how the minerals
                  * are ordered.
                  *********************************************************************************/
-                case MOVETO_SAMPLES: {
+                case MOVETO_SAMPLES:
                     if (newState) {
                         stateLabel = "Moving to sampling-area";
                         if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
                         newState = false;
                         // Move out to the sampling area
                         // Using coordinates or relative measurements?
-                        timeOut = runtime.milliseconds() + 4000;
+                        timeOut = runtime.milliseconds() + 10000;
 //                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
                     } else if (runtime.milliseconds()>timeOut){
                         // Stop motors
                         autoState = autoStates.IDENTIFY_GOLD;
                         newState = true;
                     }
-                }
+                    break;
 
                 /*******************************************************************************
                  * Robot is standing in front of the three mineral samples. If we havent already,
@@ -672,12 +698,12 @@ public class TestAutonomousOpMode extends LinearOpMode {
                  * We attempt to identify the location in already BEFORE we stop in front of
                  * the samples.
                  ******************************************************************************/
-                case IDENTIFY_GOLD: {
+                case IDENTIFY_GOLD:
                     if (newState) {
                         stateLabel = "Identifying where the Gold is";
                         if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 2000;
+                        timeOut = runtime.milliseconds() + 10000;
                     }
                     if (goldIndex != -1 || (runtime.milliseconds()>timeOut))  {
                         // Stop Tensor Flow
@@ -691,25 +717,25 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             // Shall we guess with 1/3 chance....or avoid ALL samples and just drive around?
                         } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
                     }
-                }
+                    break;
 
                 /********************************************************************************
                  * Moving the robot so that we push the Gold mineral away from the sampling area
                  * A goldIndex of -1 will simply be ignored and robot will do NOTHING
                  ********************************************************************************/
-                case REMOVE_GOLD: {
+                case REMOVE_GOLD:
                     if (newState && goldIndex != -1) {
                         stateLabel = "Moving the Gold mineral";
                         if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 4000;
+                        timeOut = runtime.milliseconds() + 10000;
                         // Use goldIndex to figure out where to go
                     } else if (runtime.milliseconds()>timeOut || goldIndex == -1)  {
                        // Stop any motors
                        autoState = autoStates.MOVETO_ALLIANCE_ZONE;
                        newState = true;
                     }
-                }
+                    break;
 
                 /**********************************************************************************
                  * Drive to OUR alliance zone. Use position to identify where we are starting.
@@ -718,12 +744,12 @@ public class TestAutonomousOpMode extends LinearOpMode {
                  * Consider using color sensor under the robot to identify when we are inside the
                  * alliance zone.
                  **********************************************************************************/
-                case MOVETO_ALLIANCE_ZONE: {
+                case MOVETO_ALLIANCE_ZONE:
                     if (newState) {
                         stateLabel = "Moving to Alliance Zone";
                         if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 5000;
+                        timeOut = runtime.milliseconds() + 10000;
                         // Move to alliance area...
                     }
                     else if (runtime.milliseconds() > timeOut) {
@@ -731,98 +757,110 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         autoState = autoStates.DROP_MARKER;
                         newState = true;
                     }
-                }
+                    break;
 
                 /**********************************************************************************
                  * Robot has reached the alliance zone. Drop the team marker in a way so that it
                  * stays within the alliance zone. If using the large mineral collection mechanism,
                  * consider what happens if team marker is dropped from high level.
                  **********************************************************************************/
-                case DROP_MARKER: {
+                case DROP_MARKER:
                     if (newState) {
                         stateLabel = "Dropping team marker";
                         if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 1500;
+                        timeOut = runtime.milliseconds() + 10000;
                         // Move motors to drop marker
                     } else if (runtime.milliseconds() > timeOut) {
                         // Stop all movement
                         autoState = autoStates.MOVETO_CRATER;
                         newState = true;
                     }
-                }
+                    break;
 
                 /**********************************************************************************
                  * Robot move to (closest?) crater regardless of its current location
                  **********************************************************************************/
-                case MOVETO_CRATER: {
+                case MOVETO_CRATER:
                     if (newState) {
                         stateLabel = "Moving to crater";
                         if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 5000;
+                        timeOut = runtime.milliseconds() + 10000;
                         // Move motors to drop marker
                     } else if (runtime.milliseconds() > timeOut) {
                         // Stop all movement
                         autoState = autoStates.LOWER_ARM;
                         newState = true;
                     }
-
-                }
+                    break;
 
                 /**********************************************************************************
                  * Robot has reached the edge of the crater. Lower the collection arm to make
                  * we touch the crater and get points.
                  **********************************************************************************/
-                case LOWER_ARM: {
+                case LOWER_ARM:
                     if (newState) {
                         stateLabel = "Lovering arm to crater";
                         if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 1000;
+                        timeOut = runtime.milliseconds() + 10000;
                         // Move motors to drop marker
                     } else if (runtime.milliseconds() > timeOut) {
                         // Stop all movement
                         autoState = autoStates.FINISHED;
                         newState = true;
                     }
-                }
+                    break;
 
                 /**********************************************************************************
                  * All commands are executed, waiting until Autonomous is over, user terminates or
                  * function times out
                  **********************************************************************************/
-                case FINISHED: {
+                case FINISHED:
                     if (newState) {
                         stateLabel = "Waiting until autonomous is done";
                         if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 5000;
+                        timeOut = runtime.milliseconds() + 10000;
                     } else if (runtime.milliseconds() > timeOut) {
                         break;
                     }
-                }
-
-                /**********************************************************************************
-                 * For every WHILE loop during the autonomous mode we update the telemetry data
-                 **********************************************************************************/
-                telemetry.addData("Run-time", runtime.toString());
-                telemetry.addData("Status", stateLabel);
-                telemetry.addData("IMU", "Angles = %.1f, Gravity = %.1f, Magnetic = %.1ff", gravity, mag);
-                telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", rollIMU, pitchIMU, headingIMU);
-                telemetry.addData("  Sys & Cal", systemStatusStr+calStatusStr);
-                if (targetVisible) { // Do we have a valid position from Vuforia?
-                    telemetry.addData("Vuforia Target ", targetSeen);
-                    telemetry.addData("  Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f", xCoord, yCoord, zCoord);
-                    telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.0f, %.0f, %.0f", roll, pitch, heading);
-                }
-                else {
-                    telemetry.addData("Vuforia Target ", "none");
-                }
-                telemetry.addData("Objects", "%i  -  Gold Index:%i", objectsDetected, goldIndex);
-                telemetry.update();
-
+                    break;
             }
+            /**********************************************************************************
+             * For every WHILE loop during the autonomous mode we update the telemetry data
+             **********************************************************************************/
+            telemetry.addData("Run-time", runtime.toString());
+            telemetry.addData("Status", stateLabel);
+            telemetry.addData("IMU", "Accel = %.1f   Cal = %s", mag, calStatusStr);
+            telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.1f, %.1f, %.1f", rollIMU, pitchIMU, headingIMU);
+
+            if (targetVisible) { // Do we have a valid position from Vuforia?
+                telemetry.addData("Vuforia Target ", targetSeen);
+                telemetry.addData("  Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f", xCoord, yCoord, zCoord);
+                telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.1f, %.1f, %.1f", roll, pitch, heading);
+            }
+            else {
+                telemetry.addData("Vuforia Target ", targetSeen);
+                telemetry.addData("  Pos (in)", "{X, Y, Z} = ");
+                telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = ");
+            }
+            switch(goldIndex){
+                case -1:
+                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold Not Identified", objectsDetected);
+                    break;
+                case 0:
+                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold LEFT", objectsDetected);
+                    break;
+                case 1:
+                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold MIDDLE", objectsDetected);
+                    break;
+                case 2:
+                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold RIGHT", objectsDetected);
+                    break;
+            }
+             telemetry.update();
         }
     }
 
