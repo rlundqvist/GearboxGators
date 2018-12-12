@@ -68,7 +68,7 @@ import com.qualcomm.robotcore.util.Range;
  */
 
 
-@TeleOp(name="Test Drive", group="Linear Opmode")
+@TeleOp(name="Concept: Drive TeleOp", group="Linear Opmode")
 //@Disabled
 public class TestDriveOpMode extends LinearOpMode {
 

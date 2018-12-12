@@ -38,17 +38,12 @@ import com.qualcomm.robotcore.util.Range;
  * This is NOT an opmode.
  *
  * This class can be used to define all the specific hardware for a single robot.
- * In this case that robot is a Pushbot.
- * See PushbotTeleopTank_Iterative and others classes starting with "Pushbot" for usage examples.
  *
  * This hardware class assumes the following device names have been configured on the robot:
  * Note:  All names are lower case and some have single spaces between words.
  *
- * Motor channel:  Left  drive motor:        "left_drive"
- * Motor channel:  Right drive motor:        "right_drive"
- * Motor channel:  Manipulator drive motor:  "left_arm"
- * Servo channel:  Servo to open left claw:  "left_hand"
- * Servo channel:  Servo to open right claw: "right_hand"
+ * Motor channel:  Left front drive motor:        "left_front_drive"
+ * Motor channel:  Right front drive motor:        "right_front_drive"
  */
 public class HardwareRobot
 {
@@ -57,9 +52,11 @@ public class HardwareRobot
     private static DcMotor leftBackDrive = null;
     private static DcMotor rightFrontDrive = null;
     private static DcMotor rightBackDrive = null;
+    //Uprivate static DcMotor rackDrive = null;
 
     // Local OpMode members.
     HardwareMap hwMap  =  null;
+
     //private ElapsedTime period  = new ElapsedTime();
 
     /* Constructor */
@@ -80,6 +77,7 @@ public class HardwareRobot
         leftBackDrive = hwMap.get(DcMotor.class,"left_back_drive");
         rightFrontDrive = hwMap.get(DcMotor.class,"right_front_drive");
         rightBackDrive = hwMap.get(DcMotor.class,"right_back_drive");
+        //rackDrive = hwMap.get(DcMotor.class,"rack_drive");
 
         // Most robots need the motor on one side to be reversed to drive forward
         // Reverse the motor that runs backwards when connected directly to the battery
@@ -87,19 +85,22 @@ public class HardwareRobot
         leftBackDrive.setDirection(DcMotor.Direction.REVERSE);
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
         rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
+        //rackDrive.setDirection(DcMotor.Direction.FORWARD);
 
         // Set all motors to zero power
         leftFrontDrive.setPower(0);
         leftBackDrive.setPower(0);
         rightFrontDrive.setPower(0);
         rightBackDrive.setPower(0);
+        //rackDrive.setPower(0);
 
-        // Set all motors to run without encoders.
-        // May want to use RUN_USING_ENCODERS if encoders are installed.
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        // Set all motors to run with encoders.
+        // Need to use RUN_WITHOUT_ENCODERS if encoders are NOT installed.
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     public static void DriveStrafe(double drive, double strafe, double turn) {
@@ -127,19 +128,20 @@ public class HardwareRobot
     public static void DriveTank (double left, double right) {
         // Tank Mode uses one stick to control each wheel.
         // This mode is hard to drive forward slowly and keep straight.
-
         Drive(left, left, right, right);
     }
 
-    private static void Drive (double lfPwr, double lbPwr, double rfPwr, double rbPwr) {
-// =======================================================================
-// TEMPORARILY DISABLED TO ALLOW US TO TEST CONCEPTS WITHOUT MOVING ROBOT.
-// =======================================================================
-        // Send requested power to each wheel/motor.
-//        leftFrontDrive.setPower(lfPwr);
-//        leftBackDrive.setPower(lbPwr);
-//        rightFrontDrive.setPower(rfPwr);
-//        rightBackDrive.setPower(rbPwr);
+    public static void DriveSTOP() {
+        Drive(0,0,0,0);
     }
- }
+
+    private static void Drive (double lfPwr, double lbPwr, double rfPwr, double rbPwr) {
+        // Send requested power to each wheel/motor.
+        leftFrontDrive.setPower(lfPwr);
+        leftBackDrive.setPower(lbPwr);
+        rightFrontDrive.setPower(rfPwr);
+        rightBackDrive.setPower(rbPwr);
+    }
+
+}
 
