@@ -225,7 +225,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
     public void runOpMode() {
 
         telemetry.addData("State", "Initializing... (0%)");
-        telemetry.addData("IMU", "Init")
+        telemetry.addData("IMU", "Init");
         telemetry.update();
         // TO-DOS
         // 1. Remove logging from IMU code
