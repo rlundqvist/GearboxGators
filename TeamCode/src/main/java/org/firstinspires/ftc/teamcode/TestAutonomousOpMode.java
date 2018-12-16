@@ -167,6 +167,8 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
     private static int objectsDetected = 0;
     private static int goldIndex = -1;
+    private static int numGold = 0;
+    private static int numSilver = 0;
 
     // Timer used to track progress and handle time-outs
     private ElapsedTime runtime = new ElapsedTime();
@@ -196,6 +198,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static double roll;
     private static double pitch;
     private static double heading;
+    private static boolean noPreviousCoord = true;
 
     private static final double FORWARD = 1.0;
     private static final double BACKWARD = -1.0;
@@ -310,7 +313,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
         /**
          * In order for localization to work, we need to tell the system where each target is on the field, and
-         * where the phone resides on the robot.  These specifications are in the form of <em>transformation matrices.</em>
+         * where the phone resides on the robot.  These specifications are in the form of transformation matrices.
          * Transformation matrices are a central, important concept in the math here involved in localization.
          * See <a href="https://en.wikipedia.org/wiki/Transformation_matrix">Transformation Matrix</a>
          * for detailed information. Commonly, you'll encounter transformation matrices as instances
@@ -325,7 +328,31 @@ public class TestAutonomousOpMode extends LinearOpMode {
          * This Rover Ruckus sample places a specific target in the middle of each perimeter wall.
          *
          * Before being transformed, each target image is conceptually located at the origin of the field's
-         *  coordinate system (the center of the field), facing up.
+         * coordinate system (the center of the field), facing up.
+         *
+         *           +----------------------- (Back) Space ------------------------+
+         *           |                                                             |
+         *           |  Blue                      +                      Red       |
+         *           |  Crater                    ^                      Alliance  |
+         *           |                             |                               |
+         *           |                             |                               |
+         *           |                                                             |
+         *           |                             X                               |
+         *           |                                                             |
+         *           |                             |                               |
+         *         (Blue)                          |                              (Red)
+         *         Rover      + <------- Y --------+ 0                         Footprint
+         *           |                             0                               |
+         *           |                                                             |
+         *           |                                                             |
+         *           |                                                             |
+         *           |                                                             |
+         *           |                                                             |
+         *           |                                                             |
+         *           |  Blue                                                Red    |
+         *           |  Alliance                                            Crater |
+         *           |                                                             |
+         *           +---------------------- (Front) Craters ----------------------+
          */
 
         /**
@@ -397,6 +424,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
          * In this example, it is centered (left to right), but 110 mm forward of the middle of the robot, and 200 mm above ground level.
          */
 
+        // TODO: Update with ACTUAL displacement once build has installed phone holder
         final int CAMERA_FORWARD_DISPLACEMENT  = 110;   // eg: Camera is 110 mm in front of robot center
         final int CAMERA_VERTICAL_DISPLACEMENT = 200;   // eg: Camera is 200 mm above ground
         final int CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
@@ -478,22 +506,21 @@ public class TestAutonomousOpMode extends LinearOpMode {
         telemetry.addData("Robot", "Hardware Init");
         telemetry.update();
 
-        // Display sound status
-//        telemetry.addData("lower resource", lowerFound ? "Found" : "NOT found\nAdd lower.wav to /src/main/res/raw" );
-//        telemetry.addData("delatch resource", delatchFound ? "Found" : "Not found\nAdd delatch.wav to /src/main/res/raw" );
-//        telemetry.addData("drive to sample resource", d2samplesFound ? "Found" : "Not found\nAdd d2samples.wav to /src/main/res/raw" );
-//        telemetry.addData("sampling resource", samplingFound ? "Found" : "Not found\n dd sampling.wav to /src/main/res/raw" );
-//        telemetry.addData("move silver resource", movegoldFound ? "Found" : "Not found\nAdd movesilver.wav to /src/main/res/raw" );
-//        telemetry.addData("drive to alliance resource", d2allianceFound ? "Found" : "Not found\nAdd  d2alliance.wav to /src/main/res/raw" );
-//        telemetry.addData("drop marker resource", dropmarkerFound ? "Found" : "Not found\nAdd dropmarker.wav to /src/main/res/raw" );
-//        telemetry.addData("drive to crater resource", d2craterFound ? "Found" : "Not found\nAdd d2crater.wav to /src/main/res/raw" );
-//        telemetry.addData("touch crater resource", touchcraterFound ? "Found" : "Not found\nAdd touchcrater.wav to /src/main/res/raw" );
-//        telemetry.addData("waiting resource", waitingFound ? "Found" : "Not found\nAdd waiting.wav to /src/main/res/raw" );
-//        telemetry.addData("silver resource", d2craterFound ? "Found" : "Not found\nAdd silver.wav to /src/main/res/raw" );
-//        telemetry.addData("gold resource", touchcraterFound ? "Found" : "Not found\nAdd gold.wav to /src/main/res/raw" );
-//        telemetry.addData("mineral resource", waitingFound ? "Found" : "Not found\nAdd mineral.wav to /src/main/res/raw" );
-//        telemetry.update();
-
+        // TODO: Enable ONLY during testing and if some of the sounds are not heard
+        // telemetry.addData("lower resource", lowerFound ? "Found" : "NOT found\nAdd lower.wav to /src/main/res/raw" );
+        // telemetry.addData("delatch resource", delatchFound ? "Found" : "Not found\nAdd delatch.wav to /src/main/res/raw" );
+        // telemetry.addData("drive to sample resource", d2samplesFound ? "Found" : "Not found\nAdd d2samples.wav to /src/main/res/raw" );
+        // telemetry.addData("sampling resource", samplingFound ? "Found" : "Not found\n dd sampling.wav to /src/main/res/raw" );
+        // telemetry.addData("move silver resource", movegoldFound ? "Found" : "Not found\nAdd movesilver.wav to /src/main/res/raw" );
+        // telemetry.addData("drive to alliance resource", d2allianceFound ? "Found" : "Not found\nAdd  d2alliance.wav to /src/main/res/raw" );
+        // telemetry.addData("drop marker resource", dropmarkerFound ? "Found" : "Not found\nAdd dropmarker.wav to /src/main/res/raw" );
+        // telemetry.addData("drive to crater resource", d2craterFound ? "Found" : "Not found\nAdd d2crater.wav to /src/main/res/raw" );
+        // telemetry.addData("touch crater resource", touchcraterFound ? "Found" : "Not found\nAdd touchcrater.wav to /src/main/res/raw" );
+        // telemetry.addData("waiting resource", waitingFound ? "Found" : "Not found\nAdd waiting.wav to /src/main/res/raw" );
+        // telemetry.addData("silver resource", d2craterFound ? "Found" : "Not found\nAdd silver.wav to /src/main/res/raw" );
+        // telemetry.addData("gold resource", touchcraterFound ? "Found" : "Not found\nAdd gold.wav to /src/main/res/raw" );
+        // telemetry.addData("mineral resource", waitingFound ? "Found" : "Not found\nAdd mineral.wav to /src/main/res/raw" );
+        // telemetry.update();
 
         // Initialize the hardware variables.
         // The init() method of the hardware class does all the work here
@@ -529,6 +556,15 @@ public class TestAutonomousOpMode extends LinearOpMode {
             tfod.activate();
         }
 
+        // TODO: Store IMU parameter from initial position hanging on lander
+        // What is our heading, roll and pitch while hanging?
+        // Store these value and consider them for future navigation
+
+        // TODO: Save and/or reset IMU readings
+        // Enables us to track from here on how the robot is moving on the playing field,
+        // if we land uneven and/or with unexpected heading and if we are unable to gather
+        // coordinates from Vuforia and the navigation targets
+
         int tmpCounter = 0;
 
         /*******************************************************************************************
@@ -541,19 +577,12 @@ public class TestAutonomousOpMode extends LinearOpMode {
              *************************************************************/
             angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
             gravity  = imu.getGravity();
-
-            // Acquiring the angles is relatively expensive; we don't want
-            // to do that in each of the three items that need that info, as that's
-            // three times the necessary expense.
-            angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-            gravity  = imu.getGravity();
             systemStatusStr = imu.getSystemStatus().toShortString();
             calStatusStr = imu.getCalibrationStatus().toString();
             headingIMU = angles.firstAngle;
             rollIMU = angles.secondAngle;
             pitchIMU = angles.thirdAngle;
             mag = Math.sqrt(gravity.xAccel*gravity.xAccel  + gravity.yAccel*gravity.yAccel + gravity.zAccel*gravity.zAccel);
-
 
             /********************************************************************
              *  Aim to perform Vuforia-based positioning in ALL autonomous stages
@@ -570,7 +599,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                     // the last time that call was made, or if the trackable is not currently visible.
                     OpenGLMatrix robotLocationTransform = ((VuforiaTrackableDefaultListener)trackable.getListener()).getUpdatedRobotLocation();
                     if (robotLocationTransform != null) {
-                        lastLocation = robotLocationTransform; // Update with new position
+
+                        // Store the last valid location
+                        lastLocation = robotLocationTransform;
                         VectorF translation = lastLocation.getTranslation();
                         xCoord = translation.get(0) / mmPerInch;
                         yCoord = translation.get(1) / mmPerInch;
@@ -579,8 +610,45 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         roll = rotation.firstAngle;
                         pitch = rotation.secondAngle;
                         heading = rotation.thirdAngle;
+
+                        if (noPreviousCoord &&
+                                (autoState == autoStates.LOWERING || autoState == autoStates.DELATCHING ||
+                                        autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
+
+                            // If we are in the first three states try to use the first valid coordinates
+                            // to identify starting quadrant and from there determine movement patterns
+                            // to/from the alliance zones and the crater
+                            // Four different starting positions:
+                            // 1. Red Crater
+                            // 2. Red Alliance Zone
+                            // 3. Blue Crater
+                            // 4. Blue Alliance Zone
+
+                            noPreviousCoord = false;
+                            if (xCoord < 0 && yCoord < 0) {
+                                // Playing RED alliance and started in from of "red" crater
+
+                                // TODO: Implement a transformation of the drive-path coordinates
+
+                            } else if (xCoord > 0 && yCoord < 0) {
+                                // Playing RED alliance and started in front of red alliance zone
+
+                                // TODO: Implement a transformation of the drive-patch coordinates
+
+                            } else if (xCoord > 0 && yCoord > 0) {
+                                // Playing BLUE alliance and started in front of "blue" crater
+
+                                // TODO: Implement a transformation of the drive-path coordinates
+
+                            } else {
+                                // Playing BLUE alliance and started in fronr of blue alliance zone
+
+                                // TODO: Implement a transformation of the drive-path coordinates
+
+                            }
+
+                        }
                     }
-                    break;
                 }
             }
 
@@ -591,7 +659,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
              * the sample area.
              * Stop doing it once the position of the Gold mineral has been successfully identified
              **************************************************************************************/
-            if ((tfod != null) &&    // Tensor Flow is running
+            if ((tfod != null) && // Tensor Flow is running
                     (goldIndex == -1) &&  // Gold has not yet been identified
                     (autoState == autoStates.LOWERING || autoState == autoStates.DELATCHING ||
                          autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
@@ -600,25 +668,89 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 // the last time that call was made.
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
+
+                    // New information/recognitions found
+                    // How hany different objects can we see?
                     objectsDetected = updatedRecognitions.size();
-                    telemetry.addData("Tensor Flow", "Objects Detected %d", objectsDetected);
+
+                    // If we recognize EXACTLY three objects
+                    // Check how they are ordered from Left to Right
                     if (updatedRecognitions.size() == 3) {
+
+                        // First reset out index variables
+                        // Value of -1 means we havent identified this object yet
                         int goldMineralX = -1;
                         int silverMineral1X = -1;
                         int silverMineral2X = -1;
+
+                        // For each of the three recognitions
                         for (Recognition recognition : updatedRecognitions) {
+
+                            // Is it a GOLD mineral?
                             if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
+
+                                // Set the of the Gold mineral to index of this object
+                                // 0=LEFT, 1=CENTER, 2=RIGHT
                                 goldMineralX = (int) recognition.getLeft();
+
                             } else if (silverMineral1X == -1) {
+
+                                // It was NOT Gold so it must be SILVER.
+                                // Is FIRST Silver still not identified (-1)?
+                                // If so - this IS the first. Set its index to this object.
                                 silverMineral1X = (int) recognition.getLeft();
+
                             } else {
+
+                                // It must be a SILVER Mineral, but we had already found the first one
+                                // so this is the second. Set its index to this object.
                                 silverMineral2X = (int) recognition.getLeft();
                             }
+
+                            // Note 1: If there are more than one Gold in the sample of three minerals
+                            //         GoldMineralX will contain index to LAST (rightmost) one
+                            //         GGS -> 1, GSG -> 2, SGG -> 2
+                            // Note 2: If there are three Silver minerals in the sample
+                            //         silverMineral1X will contain index to first (leftmost) one &
+                            //         silverMineral2X will contain index ro
                         }
+
                         if (goldMineralX != -1 && silverMineral1X != -1 && silverMineral2X != -1) {
-                            // All minerals have been identified
+
+                            // TODO: Consider simplifying this test
+                            // The above test demands that there are exactly 1 Gold and 2 Silver.
+                            // Not sure if that is really needed?
+                            // I suggest we replace by simply testing if "a" Gold mineral has been identified,
+                            // Regardless of how many...like "if (goldMineralX != -1)"
+
+                            // Remember where the gold is located
                             goldIndex = goldMineralX;
+
                             if (mineralFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, mineralSoundID);
+                        }
+                    } else {
+
+                        // TODO: This whole "else" branch can be disabled during competition
+                        // Recognitions are made but more/less than 3
+                        // Used for testing/calibration purposes to validated from what distance
+                        // and under what conditions we can recognize the minerals
+
+                        numGold = 0;
+                        numSilver = 0;
+                        for (Recognition recognition : updatedRecognitions) {
+
+                            // Is it a GOLD mineral?
+                            if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
+                                numGold++;
+                                if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
+                            }
+
+                            // Is it a SILVER mineral?
+                            if (recognition.getLabel().equals(LABEL_SILVER_MINERAL)) {
+                                numSilver++;
+                                if (silverFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, silverSoundID);
+                            }
+
                         }
                     }
                 }
@@ -637,11 +769,18 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Lowering robot to ground";
                         if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
                         newState = false;
-                        // Start driving rack to full position using encoder
+
+                        // TODO: Start driving rack to full position using encoder
+
                         timeOut = runtime.milliseconds() + 10000;
-//                    } else if (!robot.rackDrive.isBusy() || (runtime.milliseconds()>timeOut)){
+
+                        // TODO: Update with test if desired position has been reached
+                        // } else if (!robot.rackDrive.isBusy() || (runtime.milliseconds()>timeOut)){
+
                     } else if (runtime.milliseconds()>timeOut){
-                        // Stop rack-motor
+
+                        // TODO: Stop rack-motor
+
                         autoState = autoStates.DELATCHING;
                         newState = true;
                     }
@@ -657,11 +796,22 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Disconnecting from lunar latch";
                         if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
                         newState = false;
-                        // Move sideways for a few inches
+
+                        // TODO: Use STRAFE function (or TURN) to move robot sideways away from the latch
+                        // Validate with build team on which side of the rack the hook is and
+                        // move in the other direction.
+                        // Try not to move so much and maintain understanding of heading and position
+                        // So we can accurately drive to sampling area
+
                         timeOut = runtime.milliseconds() + 10000;
-//                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+
+                        // TODO: Update with test if desired position has been reached
+                        // } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+
                     } else if (runtime.milliseconds()>timeOut){
-                        // Stop rack-motor
+
+                        // TODO: Stop all motors
+
                         autoState = autoStates.MOVETO_SAMPLES;
                         newState = true;
                     }
@@ -677,12 +827,21 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving to sampling-area";
                         if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
                         newState = false;
-                        // Move out to the sampling area
-                        // Using coordinates or relative measurements?
+
+                        // TODO: Move to predetermined location in front of samples
+                        // If we have coordinate we will use them. Otherwise we will empirically
+                        // define a movement (time or encoder-based) that should take us to correct
+                        // desired position defined as (X, Y, Heading)
+
                         timeOut = runtime.milliseconds() + 10000;
-//                    } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+
+                        // TODO: Update with test if desired position has been reached
+                        // } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+
                     } else if (runtime.milliseconds()>timeOut){
-                        // Stop motors
+
+                        // TODO: Stop all motors
+
                         autoState = autoStates.IDENTIFY_GOLD;
                         newState = true;
                     }
@@ -713,7 +872,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         autoState = autoStates.REMOVE_GOLD;
                         newState = true;
                         if (goldIndex == -1) {
-                            // We have not figured out where the gold is...
+                            // TODO: We have not figured out where the gold is...
                             // Shall we guess with 1/3 chance....or avoid ALL samples and just drive around?
                         } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
                     }
@@ -828,6 +987,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                     }
                     break;
             }
+
             /**********************************************************************************
              * For every WHILE loop during the autonomous mode we update the telemetry data
              **********************************************************************************/
@@ -846,20 +1006,12 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 telemetry.addData("  Pos (in)", "{X, Y, Z} = ");
                 telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = ");
             }
-            switch(goldIndex){
-                case -1:
-                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold Not Identified", objectsDetected);
-                    break;
-                case 0:
-                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold LEFT", objectsDetected);
-                    break;
-                case 1:
-                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold MIDDLE", objectsDetected);
-                    break;
-                case 2:
-                    telemetry.addData("Tensor Flow", "Objects %d  -  Gold RIGHT", objectsDetected);
-                    break;
-            }
+
+            telemetry.addData("Tensor Flow", "Obj# %d: Silver %d, Gold %d (%s)", objectsDetected, numSilver, numGold,
+                    goldIndex == 0 ? "LEFT" :
+                    goldIndex == 1 ? "CENTER" :
+                    goldIndex == 2 ? "RIGHT" : "Unknown");
+
              telemetry.update();
         }
     }
