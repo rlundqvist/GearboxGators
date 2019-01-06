@@ -36,6 +36,7 @@ import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
@@ -70,10 +71,10 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
 
 
 /**
- * This file contains an minimal example of a Linear "OpMode". An OpMode is a 'program' that runs in either
- * the autonomous or the teleop period of an FTC match. The names of OpModes appear on the menu
- * of the FTC Driver Station. When an selection is made from the menu, the corresponding OpMode
- * class is instantiated on the Robot Controller and executed.
+ * This file contains an concept implementation of a linear autonomous "OpMode". An OpMode is a
+ * 'program' that runs in either the autonomous or the teleop period of an FTC match. The names of
+ * OpModes appear on the menu of the FTC Driver Station. When an selection is made from the menu,
+ * the corresponding OpMode class is instantiated on the Robot Controller and executed.
  *
  * This particular OpMode just executes a basic Tank Drive Teleop for a two wheeled robot
  * It includes all the skeletal structure that all linear OpModes contain.
@@ -83,7 +84,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
  *
  * This 2018-2019 OpMode illustrates the basics of using the Vuforia localizer to determine
  * positioning and orientation of robot on the FTC field.
- * The code is structured as a LinearOpMode
+ * The code is structured as a LinearOpMode/
  *
  * Vuforia uses the phone's camera to inspect it's surroundings, and attempt to locate target images.
  *
@@ -224,41 +225,53 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static boolean newState = true;
     private static String stateLabel = "Initializing";
 
+    private static double xFactor = 1.0;
+    private static double yFactor = 1.0;
+
+    private static final double     DRIVE_SPEED             = 0.1;
+    private static final double     TURN_SPEED              = 0.1;
+    private static final double     LOWER_SPEED             = 0.1;
+
+    static private int leg = 1;
+
     @Override
     public void runOpMode() {
 
         telemetry.addData("State", "Initializing... (0%)");
         telemetry.addData("IMU", "Init");
         telemetry.update();
-        // TO-DOS
-        // 1. Remove logging from IMU code
-        // 2. Add telemetry status and updates to monitor progress
-        // 3. What to do if we dont know where gold is? Guess? Ignore?
-        // 4. Define new motors in the Robot class
-        // 5. Implement driving by encoder
-        // 6. Decide on strategy after Gold sampling
+
+        robot.init(hardwareMap);
+
+        // TODO: Define all new motors, servors and sensors
+        //
+        // TODO: Strategic decision - How to move to alliance depot without bumping into alliance partner?
         //      - there is a risk to bump into other robots and get stuck
-        //      - should we ask other teams how they drive and different modes?
+        //      - should we ask other teams how they drive and use multiple different modes/routes?
         //      - Use sensors?
         //      - Do whatever is easiest/closest zone/crater
-        // 7. Add handling of additional sensors
+        //
+        // TODO: Installe and leverage additional sensors
         //      - Magnetic
         //      - Touch
         //      - Color
         //      - Distance
         //      - Webcams
+        //
+        // TODO: Update the timoeuts
 
         /************************************************
          * Initialize the Inertial Measurement Unit - IMU
          ************************************************/
         // Initialize the Inertial Measurement Unit (IMU) - "Gyro"
         // Set up the parameters with which we will use our IMU.
-        // Note that integration algorithm here just reports accelerations to the logcat log;
-        // it doesn't actually provide positional information.
         BNO055IMU.Parameters IMUparameters = new BNO055IMU.Parameters();
         IMUparameters.angleUnit           = BNO055IMU.AngleUnit.DEGREES;
         IMUparameters.accelUnit           = BNO055IMU.AccelUnit.METERS_PERSEC_PERSEC;
         IMUparameters.calibrationDataFile = "BNO055IMUCalibration.json"; // Created by the Calibration OpMode
+
+        // TODO: Review how the IMU is used and consider reving thew logcat information
+        // Note that integration algorithm here just reports accelerations to the logcat log;
         IMUparameters.loggingEnabled      = true;
         IMUparameters.loggingTag          = "IMU";
         IMUparameters.accelerationIntegrationAlgorithm = new JustLoggingAccelerationIntegrator();
@@ -332,11 +345,11 @@ public class TestAutonomousOpMode extends LinearOpMode {
          *
          *           +----------------------- (Back) Space ------------------------+
          *           |                                                             |
-         *           |  Blue                      +                      Red       |
-         *           |  Crater                    ^                      Alliance  |
+         *           |  Blue                       +                      Red      |
+         *           |  Crater                     ^                      Alliance |
          *           |                             |                               |
          *           |                             |                               |
-         *           |                                                             |
+         *           |              Q1                              Q2             |
          *           |                             X                               |
          *           |                                                             |
          *           |                             |                               |
@@ -346,7 +359,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
          *           |                                                             |
          *           |                                                             |
          *           |                                                             |
-         *           |                                                             |
+         *           |              Q4                              Q3             |
          *           |                                                             |
          *           |                                                             |
          *           |  Blue                                                Red    |
@@ -412,6 +425,17 @@ public class TestAutonomousOpMode extends LinearOpMode {
          * pointing to the LEFT side of the Robot.  It's very important when you test this code that the top of the
          * camera is pointing to the left side of the  robot.  The rotation angles don't work if you flip the phone.
          *
+         *                +---------------------+
+         *                |                     |
+         *               0|                     |0
+         *                |                     |
+         *                |          cam        |
+         *                |         ==========  |
+         *                |                     |
+         *               0|                     |0
+         *                |                     |
+         *                +---------------------+
+        *
          * If using the rear (High Res) camera:
          * We need to rotate the camera around it's long axis to bring the rear camera forward.
          * This requires a negative 90 degree rotation on the Y axis
@@ -425,8 +449,10 @@ public class TestAutonomousOpMode extends LinearOpMode {
          */
 
         // TODO: Update with ACTUAL displacement once build has installed phone holder
-        final int CAMERA_FORWARD_DISPLACEMENT  = 110;   // eg: Camera is 110 mm in front of robot center
-        final int CAMERA_VERTICAL_DISPLACEMENT = 200;   // eg: Camera is 200 mm above ground
+        // TODO: Make sure we consider BOTH phone Models (Moto and Samsung galaxy S5)
+        // TODO: Consider using the Samsung if it is wider screen so we can see the samples
+        final int CAMERA_FORWARD_DISPLACEMENT  = 200;   // eg: Camera is 200 mm in front of robot center
+        final int CAMERA_VERTICAL_DISPLACEMENT = 100;   // eg: Camera is 100 mm above ground
         final int CAMERA_LEFT_DISPLACEMENT     = 0;     // eg: Camera is ON the robot's center line
 
         OpenGLMatrix phoneLocationOnRobot = OpenGLMatrix
@@ -561,7 +587,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
         // Store these value and consider them for future navigation
 
         // TODO: Save and/or reset IMU readings
-        // Enables us to track from here on how the robot is moving on the playing field,
+        // Enables us to track from here-on how the robot is moving on the playing field,
         // if we land uneven and/or with unexpected heading and if we are unable to gather
         // coordinates from Vuforia and the navigation targets
 
@@ -627,23 +653,27 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             noPreviousCoord = false;
                             if (xCoord < 0 && yCoord < 0) {
                                 // Playing RED alliance and started in from of "red" crater
-
-                                // TODO: Implement a transformation of the drive-path coordinates
+                                // Quadrant 3: Negative X and Y
+                                xFactor = -1.0;
+                                yFactor = -1.0;
 
                             } else if (xCoord > 0 && yCoord < 0) {
                                 // Playing RED alliance and started in front of red alliance zone
-
-                                // TODO: Implement a transformation of the drive-patch coordinates
+                                // Quadrant 2: Positive X and Negative Y
+                                xFactor =  1.0;
+                                yFactor = -1.0;
 
                             } else if (xCoord > 0 && yCoord > 0) {
                                 // Playing BLUE alliance and started in front of "blue" crater
-
-                                // TODO: Implement a transformation of the drive-path coordinates
+                                // Quadrant 1: Positive X and Y
+                                xFactor = 1.0;
+                                yFactor = 1.0;
 
                             } else {
-                                // Playing BLUE alliance and started in fronr of blue alliance zone
-
-                                // TODO: Implement a transformation of the drive-path coordinates
+                                // Playing BLUE alliance and started in front of blue alliance zone
+                                // Quadrant 4: Negative X and Positive Y
+                                xFactor = -1.0;
+                                yFactor =  1.0;
 
                             }
 
@@ -770,19 +800,18 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
                         newState = false;
 
-                        // TODO: Start driving rack to full position using encoder
+                        robot.encodeRack(LOWER_SPEED, 4.0);
 
-                        timeOut = runtime.milliseconds() + 10000;
+                        timeOut = runtime.milliseconds() + 20000;
 
-                        // TODO: Update with test if desired position has been reached
-                        // } else if (!robot.rackDrive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (!robot.rackBusy() || (runtime.milliseconds()>timeOut)){
 
-                    } else if (runtime.milliseconds()>timeOut){
-
-                        // TODO: Stop rack-motor
+                        robot.encodeRackStop();
 
                         autoState = autoStates.DELATCHING;
                         newState = true;
+
+
                     }
                     break;
 
@@ -797,23 +826,19 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
                         newState = false;
 
-                        // TODO: Use STRAFE function (or TURN) to move robot sideways away from the latch
-                        // Validate with build team on which side of the rack the hook is and
-                        // move in the other direction.
-                        // Try not to move so much and maintain understanding of heading and position
-                        // So we can accurately drive to sampling area
+                        // Move robot sideways off the latch
+                        robot.encodeDrive(TURN_SPEED, 5.0, -5.0, -5.0, 5.0);
 
-                        timeOut = runtime.milliseconds() + 10000;
+                        timeOut = runtime.milliseconds() + 20000;
 
-                        // TODO: Update with test if desired position has been reached
-                        // } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (!robot.driveBusy() || (runtime.milliseconds()>timeOut)){
 
-                    } else if (runtime.milliseconds()>timeOut){
-
-                        // TODO: Stop all motors
+                        robot.encodeDriveStop();
 
                         autoState = autoStates.MOVETO_SAMPLES;
                         newState = true;
+
+
                     }
                     break;
 
@@ -826,24 +851,23 @@ public class TestAutonomousOpMode extends LinearOpMode {
                     if (newState) {
                         stateLabel = "Moving to sampling-area";
                         if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
+
                         newState = false;
 
-                        // TODO: Move to predetermined location in front of samples
-                        // If we have coordinate we will use them. Otherwise we will empirically
-                        // define a movement (time or encoder-based) that should take us to correct
-                        // desired position defined as (X, Y, Heading)
+                        // Drive up in from of samples
+                        robot.encodeDrive(DRIVE_SPEED, 12, 12, 12, 12);
 
-                        timeOut = runtime.milliseconds() + 10000;
+                        timeOut = runtime.milliseconds() + 20000;
 
-                        // TODO: Update with test if desired position has been reached
-                        // } else if (!robot.left_front_drive.isBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (!robot.driveBusy() || (runtime.milliseconds()>timeOut)){
 
-                    } else if (runtime.milliseconds()>timeOut){
 
-                        // TODO: Stop all motors
+                        robot.encodeDriveStop();
 
                         autoState = autoStates.IDENTIFY_GOLD;
                         newState = true;
+
+
                     }
                     break;
 
@@ -862,19 +886,28 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Identifying where the Gold is";
                         if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
+                        timeOut = runtime.milliseconds() + 20000;
+
+                        // TODO: Determine if this state is really needed. Maybe we will have seen the gold before we get here?
+                        // TODO: Or maybe we need to aim camera downwards to avoid seeing minerals in crater?
                     }
                     if (goldIndex != -1 || (runtime.milliseconds()>timeOut))  {
-                        // Stop Tensor Flow
+
+                        // We are done with mineral sampling and can stop Tensor Flow if still running
                          if (tfod != null) {
                             tfod.shutdown();
                         }
+
                         autoState = autoStates.REMOVE_GOLD;
                         newState = true;
                         if (goldIndex == -1) {
-                            // TODO: We have not figured out where the gold is...
-                            // Shall we guess with 1/3 chance....or avoid ALL samples and just drive around?
+
+                            // We could NOT identify the gold so we will guess that it is in the middle position
+                            goldIndex = 1;
+
                         } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
+
+
                     }
                     break;
 
@@ -887,12 +920,68 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving the Gold mineral";
                         if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
-                        // Use goldIndex to figure out where to go
+                        timeOut = runtime.milliseconds() + 20000;
+
+                         // Drive Forward enough to move gold mineral
+                        leg = 1;
+
                     } else if (runtime.milliseconds()>timeOut || goldIndex == -1)  {
-                       // Stop any motors
+
+                       robot.encodeDriveStop();
+
                        autoState = autoStates.MOVETO_ALLIANCE_ZONE;
                        newState = true;
+
+
+                    } else if (!robot.driveBusy()) {
+                        switch(leg) {
+                            case 1: // Make Appropriate Turn
+                                if (goldIndex==0) {
+                                    // Gold on the legt - turn left
+                                    robot.encodeDrive(TURN_SPEED, -4, -4, 4, 4);
+                                }
+                                if (goldIndex==2){
+                                    // Gold on the right - rurn right
+                                    robot.encodeDrive(TURN_SPEED, 4, 4, -4, -4);
+                                }
+                                leg++;
+                                break;
+
+                            case 2: // Move forward to push gold mineral
+                                robot.encodeDrive(DRIVE_SPEED, 8, 8, 8, 8);
+                                leg++;
+                                break;
+
+                            case 3: // Back up
+                                robot.encodeDrive(DRIVE_SPEED, -8, -8, -8, -8);
+                                leg++;
+                                break;
+
+                            case 4: // Turn sideways
+                                if (goldIndex==0) {
+                                    // We are already turned 4 to the left, turn 8 more --> 12 total to the left
+                                    robot.encodeDrive(TURN_SPEED, -8, -8, 8, 8);
+                                }
+                                if (goldIndex==1){
+                                    // We are straight, turn 12 to the left
+                                    robot.encodeDrive(TURN_SPEED, -12, -12, 12, 12);
+                                }
+                                if (goldIndex==2){
+                                    // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
+                                    robot.encodeDrive(TURN_SPEED, -16, -16, 16, 16);
+                                }
+                                leg++;
+                                break;
+
+                            case 5: // Done turning
+                                robot.encodeDriveStop();
+
+                                autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                                newState = true;
+
+                                break;
+                        }
+
                     }
                     break;
 
@@ -908,13 +997,84 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving to Alliance Zone";
                         if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
-                        // Move to alliance area...
+                        timeOut = runtime.milliseconds() + 20000;
+
+                        leg = 1;
+
+                        // TODO: Move to alliance area...
+                        // If we started in from of Alliance
+                        //  -   adjust angle based on goldindex
+                        //  -   drive into alliance depot
+                        // If we started in front of crater
+                        //  -   drive back
+                        //  -   turn based on goldIndex
+                        //  -   drive forward until close to wall
+                        //  -   turn left (x degrees)
+                        //  -   drive along wall into alliance depot
                     }
                     else if (runtime.milliseconds() > timeOut) {
-                        // Stop any movement
+
+                        robot.encodeDriveStop();
+
                         autoState = autoStates.DROP_MARKER;
                         newState = true;
+
+                    }
+                    else if (!robot.driveBusy()) {
+                        if (xFactor==yFactor) {
+                            // Started in front of crater
+                            switch (leg) {
+                                case 1: // Drive toward side of field
+                                    robot.encodeDrive(DRIVE_SPEED, 50, 50, 50, 50);
+                                    leg++;
+                                    break;
+
+                                case 2: // Turn left
+                                    robot.encodeDrive(TURN_SPEED, -8, -8, 8, 8);
+                                    leg++;
+                                    break;
+
+                                case 3: // Drive into alliance depot
+                                    robot.encodeDrive(DRIVE_SPEED, 30, 30, 30, 30);
+                                    leg++;
+                                    break;
+
+                                case 4: // We have reached alliance depot
+                                    robot.encodeDriveStop();
+
+                                    autoState = autoStates.DROP_MARKER;
+                                    newState = true;
+
+                                    break;
+                            }
+                        }
+                        else {
+                            //Started in front of alliance
+                            switch (leg) {
+                                case 1: // Drive to the left past the minerals
+                                    robot.encodeDrive(DRIVE_SPEED, 20, 20, 20, 20);
+                                    leg++;
+                                    break;
+
+                                case 2: // Turn right
+                                    robot.encodeDrive(TURN_SPEED, 12, 12, -12, -12);
+                                    leg++;
+                                    break;
+
+                                case 3: // Drive to alliance zone
+                                    robot.encodeDrive(DRIVE_SPEED, 30, 30, 30, 30);
+                                    leg++;
+                                    break;
+
+                                case 4: // Have arrived to crater
+                                    robot.encodeDriveStop();
+
+                                    autoState = autoStates.DROP_MARKER;
+                                    newState = true;
+
+                                    break;
+                            }
+                        }
                     }
                     break;
 
@@ -928,12 +1088,18 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Dropping team marker";
                         if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
-                        // Move motors to drop marker
+                        timeOut = runtime.milliseconds() + 20000;
+
+                        // TODO: Drop the team marker
+                        // Consider that we have entered the alliance zone in different ways
+
                     } else if (runtime.milliseconds() > timeOut) {
-                        // Stop all movement
+
+                        // TODO: Stop all movement
+
                         autoState = autoStates.MOVETO_CRATER;
                         newState = true;
+
                     }
                     break;
 
@@ -945,12 +1111,49 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving to crater";
                         if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
-                        // Move motors to drop marker
+                        timeOut = runtime.milliseconds() + 20000;
+
+                        leg = 1;
+
+                        // TODO: Drive to crater
+                        //  -   turn based on where we came from - 180 if we started in front of crater
+                        //      something less if we started in front of the alliance depot (130?)
+                        //  -   drive forward based on encoder to the crater edge or until we detect the slope of the
+                        //      crater edge
+
                     } else if (runtime.milliseconds() > timeOut) {
-                        // Stop all movement
+
+                        robot.encodeDriveStop();
+
                         autoState = autoStates.LOWER_ARM;
                         newState = true;
+
+                    } else {
+                        switch (leg) {
+                            case 1: // Turn towards crater
+                                if (xFactor==yFactor) {
+                                    // We came from a start in front of the crater --> Turn around completely
+                                    robot.encodeDrive(TURN_SPEED, 12, 12, -12, -12);
+                                } else {
+                                    // We came from a start in front of the alliance zone, turn just a little bit
+                                    robot.encodeDrive(TURN_SPEED, 8, 8, -8, -8);
+                                }
+                                leg++;
+                                break;
+
+                            case 2: // Drive to crater
+                                robot.encodeDrive(DRIVE_SPEED, 80,80,80,80);
+                                leg++;
+                                break;
+
+                            case 3: // We have reached crater
+                                robot.encodeDriveStop();
+
+                                autoState = autoStates.LOWER_ARM;
+                                newState = true;
+
+                                break;
+                        }
                     }
                     break;
 
@@ -963,12 +1166,15 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Lovering arm to crater";
                         if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
-                        // Move motors to drop marker
+                        timeOut = runtime.milliseconds() + 20000;
+
+                        // TODO: Lower the collections mechanism so that we are ready for manual mode and so we are sure to touch crater
+
                     } else if (runtime.milliseconds() > timeOut) {
                         // Stop all movement
                         autoState = autoStates.FINISHED;
                         newState = true;
+
                     }
                     break;
 
@@ -981,7 +1187,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Waiting until autonomous is done";
                         if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 10000;
+                        timeOut = runtime.milliseconds() + 20000;
                     } else if (runtime.milliseconds() > timeOut) {
                         break;
                     }
@@ -995,7 +1201,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
             telemetry.addData("Status", stateLabel);
             telemetry.addData("IMU", "Accel = %.1f   Cal = %s", mag, calStatusStr);
             telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = %.1f, %.1f, %.1f", rollIMU, pitchIMU, headingIMU);
-
+/**
             if (targetVisible) { // Do we have a valid position from Vuforia?
                 telemetry.addData("Vuforia Target ", targetSeen);
                 telemetry.addData("  Pos (in)", "{X, Y, Z} = %.1f, %.1f, %.1f", xCoord, yCoord, zCoord);
@@ -1006,16 +1212,18 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 telemetry.addData("  Pos (in)", "{X, Y, Z} = ");
                 telemetry.addData("  Rot (deg)", "{Roll, Pitch, Heading} = ");
             }
-
-            telemetry.addData("Tensor Flow", "Obj# %d: Silver %d, Gold %d (%s)", objectsDetected, numSilver, numGold,
+**/
+            telemetry.addData("Tensor Flow", "%d Obj: Silver %d, Gold %d (%s)", objectsDetected, numSilver, numGold,
                     goldIndex == 0 ? "LEFT" :
                     goldIndex == 1 ? "CENTER" :
                     goldIndex == 2 ? "RIGHT" : "Unknown");
 
-             telemetry.update();
+            telemetry.addData("Power", "LF: %.1f, LB: %.1f, RF: %.1f, RB: %.1f", robot.LeftFrontPower(), robot.LeftBackPower(), robot.RightFrontPower(), robot.RightBackPower());
+            telemetry.addData("Encoder", "Left: %d, Right: %d, Rack: %d", robot.ToLeftTarget(), robot.ToRightTarget(), robot.ToRackTarget());
+            telemetry.update();
         }
     }
-
+/**
     void DriveForward (double milliseconds) {
         ElapsedTime timer = new ElapsedTime();
 
@@ -1073,4 +1281,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
         telemetry.update();
     }
+ **/
+
 }

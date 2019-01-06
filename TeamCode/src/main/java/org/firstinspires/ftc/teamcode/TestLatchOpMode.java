@@ -58,7 +58,7 @@ public class TestLatchOpMode extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor rackDrive = null;
 
-    private static final double RACK_POWER = 0.3;
+    private static final double RACK_POWER = 1;
 
     @Override
     public void runOpMode() {
