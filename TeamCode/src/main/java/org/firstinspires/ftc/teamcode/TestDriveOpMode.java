@@ -70,7 +70,7 @@ import com.qualcomm.robotcore.util.Range;
 
 
 @TeleOp(name="Concept: Drive TeleOp", group="Linear Opmode")
-//@Disabled
+@Disabled
 public class TestDriveOpMode extends LinearOpMode {
 
     private ElapsedTime runtime = new ElapsedTime();

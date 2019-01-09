@@ -228,11 +228,16 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static double xFactor = 1.0;
     private static double yFactor = 1.0;
 
-    private static final double     DRIVE_SPEED             = 0.1;
-    private static final double     TURN_SPEED              = 0.1;
-    private static final double     LOWER_SPEED             = 0.1;
+    private static final double     DRIVE_SPEED             = 0.3;
+    private static final double     TURN_SPEED              = 0.3;
+    private static final double     LOWER_SPEED             = 0.3;
 
     static private int leg = 1;
+
+    private static boolean initReady = false;
+    private static String startArea = "Unknown";
+    private static String goldLocation = "Unknown";
+
 
     @Override
     public void runOpMode() {
@@ -282,7 +287,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         imu.initialize(IMUparameters);
 
-        telemetry.addData("State", "Initializing... (60%)");
+        telemetry.addData("State", "Initializing... (20%)");
         telemetry.addData("IMU","DONE");
         telemetry.addData("Vuforia", "Navigation Init");
         telemetry.update();
@@ -466,7 +471,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
             ((VuforiaTrackableDefaultListener)trackable.getListener()).setPhoneInformation(phoneLocationOnRobot, parameters.cameraDirection);
         }
 
-        telemetry.addData("State", "Initializing... (70%)");
+        telemetry.addData("State", "Initializing... (40%)");
         telemetry.addData("IMU","DONE");
         telemetry.addData("Vuforia", "DONE");
         telemetry.addData("Tensor Flow", "Object Detection Init");
@@ -486,7 +491,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
         /***************************************************************
          * Initialize all sounds and validate that they can be preloaded
          ***************************************************************/
-        telemetry.addData("State", "Initializing... (80%)");
+        telemetry.addData("State", "Initializing... (60%)");
         telemetry.addData("IMU","DONE");
         telemetry.addData("Vuforia", "DONE");
         telemetry.addData("Tensor Flow", "DONE");
@@ -550,7 +555,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
         // Initialize the hardware variables.
         // The init() method of the hardware class does all the work here
-        robot.init(hardwareMap);
+        //robot.init(hardwareMap);
 
         telemetry.addData("State", "READY to go - Press PLAY");
         telemetry.addData("IMU","DONE");
@@ -561,6 +566,37 @@ public class TestAutonomousOpMode extends LinearOpMode {
         telemetry.update();
 
         autoState = autoStates.LOWERING;;
+
+        //TODO: Utiilize this knowledge
+        while (!initReady){
+            if (gamepad1.start) initReady = true;
+            if (gamepad1.x) {
+                startArea = "Blue Alliance Zone";
+                xFactor = -1;
+                yFactor = 1;
+            }
+            if (gamepad1.b) {
+                startArea = "Red Alliance Zone";
+                xFactor = 1;
+                yFactor = -1;
+            }
+            if (gamepad1.a) {
+                startArea = "Red Crater";
+                xFactor = -1;
+                yFactor = -1;
+            }
+            if (gamepad1.y) {
+                startArea = "Blue Crater";
+                xFactor = 1;
+                yFactor = 1;
+            }
+            //if (gamepad1.dpad_left) goldLocation = "LEFT"; //goldIndex = 0;
+            //if (gamepad1.dpad_up) goldLocation = "CENTER"; //goldIndex = 1;
+            //if (gamepad1.dpad_right) goldLocation = "RIGHT"; // goldIndex =2;
+            telemetry.addData("Start", "%s", startArea);
+            //telemetry.addData("Gold", "%s", goldLocation);
+            telemetry.update();
+        }
 
         // Wait for the game to start (driver presses PLAY button on Driver Station)
         waitForStart();
@@ -637,7 +673,8 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         pitch = rotation.secondAngle;
                         heading = rotation.thirdAngle;
 
-                        if (noPreviousCoord &&
+                        if (startArea == "Unknown" &&
+                                noPreviousCoord &&
                                 (autoState == autoStates.LOWERING || autoState == autoStates.DELATCHING ||
                                         autoState == autoStates.MOVETO_SAMPLES || autoState == autoStates.IDENTIFY_GOLD)) {
 
@@ -651,7 +688,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             // 4. Blue Alliance Zone
 
                             noPreviousCoord = false;
-                            if (xCoord < 0 && yCoord < 0) {
+                            if ( xCoord < 0 && yCoord < 0) {
                                 // Playing RED alliance and started in from of "red" crater
                                 // Quadrant 3: Negative X and Y
                                 xFactor = -1.0;
@@ -802,7 +839,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                         robot.encodeRack(LOWER_SPEED, 4.0);
 
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 1000;
 
                     } else if (!robot.rackBusy() || (runtime.milliseconds()>timeOut)){
 
@@ -810,8 +847,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                         autoState = autoStates.DELATCHING;
                         newState = true;
-
-
                     }
                     break;
 
@@ -827,11 +862,15 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         newState = false;
 
                         // Move robot sideways off the latch
-                        robot.encodeDrive(TURN_SPEED, 5.0, -5.0, -5.0, 5.0);
+                        //robot.encodeDrive(TURN_SPEED, 5.0, -5.0, -5.0, 5.0);
 
-                        timeOut = runtime.milliseconds() + 20000;
+                        robot.encodeDrive(TURN_SPEED, 2, 2, -2, -2);
 
-                    } else if (!robot.driveBusy() || (runtime.milliseconds()>timeOut)){
+                        timeOut = runtime.milliseconds() + 10000;
+                        leg = 2;
+
+                    //} else if (!robot.driveBusy() || (runtime.milliseconds()>timeOut)){
+                    } else if (runtime.milliseconds()>timeOut){
 
                         robot.encodeDriveStop();
 
@@ -839,6 +878,26 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         newState = true;
 
 
+                    } else {
+                        if (!robot.driveBusy()) {
+                            switch (leg) {
+                                case 1:
+                                    robot.encodeDrive(TURN_SPEED, 2, 2, -2, -2);
+                                    leg++;
+                                    break;
+                                case 2:
+                                    robot.encodeDrive(DRIVE_SPEED, 2, 2, 2, 2);
+                                    leg++;
+                                    break;
+                                case 3:
+                                    robot.encodeDrive(TURN_SPEED, -2, -2, 2, 2);
+
+                                    autoState = autoStates.MOVETO_SAMPLES;
+                                    newState = true;
+                                    leg++;
+                                    break;
+                            }
+                        }
                     }
                     break;
 
@@ -855,9 +914,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         newState = false;
 
                         // Drive up in from of samples
-                        robot.encodeDrive(DRIVE_SPEED, 12, 12, 12, 12);
+                        robot.encodeDrive(DRIVE_SPEED, 6, 6, 6, 6);
 
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 4000;
 
                     } else if (!robot.driveBusy() || (runtime.milliseconds()>timeOut)){
 
@@ -886,7 +945,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Identifying where the Gold is";
                         if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 4000;
 
                         // TODO: Determine if this state is really needed. Maybe we will have seen the gold before we get here?
                         // TODO: Or maybe we need to aim camera downwards to avoid seeing minerals in crater?
@@ -907,6 +966,23 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                         } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
 
+                        // TODO
+                        switch(goldLocation) {
+                            case "Unknown":
+                                break;
+
+                            case "LEFT":
+                                goldIndex = 0;
+                                break;
+
+                            case "CENTER":
+                                goldIndex = 1;
+                                break;
+
+                            case "RIGHT":
+                                goldIndex = 2;
+                                break;
+                        }
 
                     }
                     break;
@@ -920,7 +996,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving the Gold mineral";
                         if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 10000;
 
                          // Drive Forward enough to move gold mineral
                         leg = 1;
@@ -933,55 +1009,57 @@ public class TestAutonomousOpMode extends LinearOpMode {
                        newState = true;
 
 
-                    } else if (!robot.driveBusy()) {
-                        switch(leg) {
-                            case 1: // Make Appropriate Turn
-                                if (goldIndex==0) {
-                                    // Gold on the legt - turn left
-                                    robot.encodeDrive(TURN_SPEED, -4, -4, 4, 4);
-                                }
-                                if (goldIndex==2){
-                                    // Gold on the right - rurn right
-                                    robot.encodeDrive(TURN_SPEED, 4, 4, -4, -4);
-                                }
-                                leg++;
-                                break;
+                    } else {
+                        if (!robot.driveBusy()) {
+                            switch (leg) {
+                                case 1: // Make Appropriate Turn
+                                    if (goldIndex == 0) {
+                                        // Gold on the legt - turn left
+                                        robot.encodeDrive(TURN_SPEED, -6.5, -6.5, 6.5, 6.5);
+                                    }
+                                    if (goldIndex == 2) {
+                                        // Gold on the right - rurn right
+                                        robot.encodeDrive(TURN_SPEED, 6.5, 6.5, -6.5, -6.5);
+                                    }
+                                    leg++;
+                                    break;
 
-                            case 2: // Move forward to push gold mineral
-                                robot.encodeDrive(DRIVE_SPEED, 8, 8, 8, 8);
-                                leg++;
-                                break;
+                                case 2: // Move forward to push gold mineral
+                                    robot.encodeDrive(DRIVE_SPEED, 5, 5, 5, 5);
+                                    leg++;
+                                    break;
 
-                            case 3: // Back up
-                                robot.encodeDrive(DRIVE_SPEED, -8, -8, -8, -8);
-                                leg++;
-                                break;
+                                case 3: // Back up
+                                    robot.encodeDrive(DRIVE_SPEED, -5, -5, -5, -5);
+                                    leg++;
+                                    break;
 
-                            case 4: // Turn sideways
-                                if (goldIndex==0) {
-                                    // We are already turned 4 to the left, turn 8 more --> 12 total to the left
-                                    robot.encodeDrive(TURN_SPEED, -8, -8, 8, 8);
-                                }
-                                if (goldIndex==1){
-                                    // We are straight, turn 12 to the left
-                                    robot.encodeDrive(TURN_SPEED, -12, -12, 12, 12);
-                                }
-                                if (goldIndex==2){
-                                    // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
-                                    robot.encodeDrive(TURN_SPEED, -16, -16, 16, 16);
-                                }
-                                leg++;
-                                break;
+                                case 4: // Turn sideways
+                                    if (goldIndex == 0) {
+                                        // We are already turned 4 to the left, turn 8 more --> 12 total to the left
+                                        robot.encodeDrive(TURN_SPEED, -3.5, -3.5, 3.5, 3.5);
+                                    }
+                                    if (goldIndex == 1) {
+                                        // We are straight, turn 12 to the left
+                                        robot.encodeDrive(TURN_SPEED, -10, -10, 10, 10);
+                                    }
+                                    if (goldIndex == 2) {
+                                        // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
+                                        robot.encodeDrive(TURN_SPEED, -16.5, -16.5, 16.5, 16.5);
+                                    }
+                                    leg++;
+                                    break;
 
-                            case 5: // Done turning
-                                robot.encodeDriveStop();
+                                case 5: // Done turning
+                                    robot.encodeDriveStop();
 
-                                autoState = autoStates.MOVETO_ALLIANCE_ZONE;
-                                newState = true;
+                                    autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                                    newState = true;
 
-                                break;
+                                    break;
+                            }
+
                         }
-
                     }
                     break;
 
@@ -997,7 +1075,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving to Alliance Zone";
                         if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 15000;
 
                         leg = 1;
 
@@ -1019,60 +1097,60 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         autoState = autoStates.DROP_MARKER;
                         newState = true;
 
-                    }
-                    else if (!robot.driveBusy()) {
-                        if (xFactor==yFactor) {
-                            // Started in front of crater
-                            switch (leg) {
-                                case 1: // Drive toward side of field
-                                    robot.encodeDrive(DRIVE_SPEED, 50, 50, 50, 50);
-                                    leg++;
-                                    break;
+                    } else {
+                        if (!robot.driveBusy()) {
+                            if (xFactor == yFactor) {
+                                // Started in front of crater
+                                switch (leg) {
+                                    case 1: // Drive toward side of field
+                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38.5, 38.5);
+                                        leg++;
+                                        break;
 
-                                case 2: // Turn left
-                                    robot.encodeDrive(TURN_SPEED, -8, -8, 8, 8);
-                                    leg++;
-                                    break;
+                                    case 2: // Turn left
+                                        robot.encodeDrive(TURN_SPEED, -10, -10, 10, 10);
+                                        leg++;
+                                        break;
 
-                                case 3: // Drive into alliance depot
-                                    robot.encodeDrive(DRIVE_SPEED, 30, 30, 30, 30);
-                                    leg++;
-                                    break;
+                                    case 3: // Drive into alliance depot
+                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38, 38);
+                                        leg++;
+                                        break;
 
-                                case 4: // We have reached alliance depot
-                                    robot.encodeDriveStop();
+                                    case 4: // We have reached alliance depot
+                                        robot.encodeDriveStop();
 
-                                    autoState = autoStates.DROP_MARKER;
-                                    newState = true;
+                                        autoState = autoStates.DROP_MARKER;
+                                        newState = true;
 
-                                    break;
-                            }
-                        }
-                        else {
-                            //Started in front of alliance
-                            switch (leg) {
-                                case 1: // Drive to the left past the minerals
-                                    robot.encodeDrive(DRIVE_SPEED, 20, 20, 20, 20);
-                                    leg++;
-                                    break;
+                                        break;
+                                }
+                            } else {
+                                //Started in front of alliance
+                                switch (leg) {
+                                    case 1: // Drive to the left past the minerals
+                                        robot.encodeDrive(DRIVE_SPEED, 22.5, 22.5, 22.5, 22.5);
+                                        leg++;
+                                        break;
 
-                                case 2: // Turn right
-                                    robot.encodeDrive(TURN_SPEED, 12, 12, -12, -12);
-                                    leg++;
-                                    break;
+                                    case 2: // Turn right
+                                        robot.encodeDrive(TURN_SPEED, 30, 30, -30, -30);
+                                        leg++;
+                                        break;
 
-                                case 3: // Drive to alliance zone
-                                    robot.encodeDrive(DRIVE_SPEED, 30, 30, 30, 30);
-                                    leg++;
-                                    break;
+                                    case 3: // Drive to alliance zone
+                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38.5, 38.5);
+                                        leg++;
+                                        break;
 
-                                case 4: // Have arrived to crater
-                                    robot.encodeDriveStop();
+                                    case 4: // Have arrived to crater
+                                        robot.encodeDriveStop();
 
-                                    autoState = autoStates.DROP_MARKER;
-                                    newState = true;
+                                        autoState = autoStates.DROP_MARKER;
+                                        newState = true;
 
-                                    break;
+                                        break;
+                                }
                             }
                         }
                     }
@@ -1088,10 +1166,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Dropping team marker";
                         if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 5000;
 
-                        // TODO: Drop the team marker
-                        // Consider that we have entered the alliance zone in different ways
+                        robot.DropMarker();
 
                     } else if (runtime.milliseconds() > timeOut) {
 
@@ -1111,7 +1188,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Moving to crater";
                         if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 15000;
 
                         leg = 1;
 
@@ -1131,18 +1208,18 @@ public class TestAutonomousOpMode extends LinearOpMode {
                     } else {
                         switch (leg) {
                             case 1: // Turn towards crater
-                                if (xFactor==yFactor) {
+                                if (xFactor == yFactor) {
                                     // We came from a start in front of the crater --> Turn around completely
-                                    robot.encodeDrive(TURN_SPEED, 12, 12, -12, -12);
+                                    robot.encodeDrive(TURN_SPEED, -40, -40, 40, 40);
                                 } else {
                                     // We came from a start in front of the alliance zone, turn just a little bit
-                                    robot.encodeDrive(TURN_SPEED, 8, 8, -8, -8);
+                                    robot.encodeDrive(TURN_SPEED, 20, 20, -20, -20);
                                 }
                                 leg++;
                                 break;
 
                             case 2: // Drive to crater
-                                robot.encodeDrive(DRIVE_SPEED, 80,80,80,80);
+                                robot.encodeDrive(DRIVE_SPEED, 58, 58, 58, 58);
                                 leg++;
                                 break;
 
@@ -1166,7 +1243,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Lovering arm to crater";
                         if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 5000;
 
                         // TODO: Lower the collections mechanism so that we are ready for manual mode and so we are sure to touch crater
 
@@ -1187,7 +1264,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         stateLabel = "Waiting until autonomous is done";
                         if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 20000;
+                        timeOut = runtime.milliseconds() + 0;
                     } else if (runtime.milliseconds() > timeOut) {
                         break;
                     }

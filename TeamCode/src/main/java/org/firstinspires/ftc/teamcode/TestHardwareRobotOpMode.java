@@ -290,11 +290,13 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
                     }
             }
 
-            //if ((isX = gamepad1.x) && !wasX) {
-            //    if (latchingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, latchingSoundID);
-            //}
+            if ((isX = gamepad1.a) && !wasX) {
+                //if (latchingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, latchingSoundID);
+                robot.DropMarker();
+            }
+
             double rackPower = gamepad1.right_trigger - gamepad1.left_trigger;
-            //robot.RackDrive(rackPower);
+            robot.RackDrive(rackPower);
 
             // Show the elapsed game time and Drive Mode.
             telemetry.addData("Status", "Run Time: " + runtime.toString());

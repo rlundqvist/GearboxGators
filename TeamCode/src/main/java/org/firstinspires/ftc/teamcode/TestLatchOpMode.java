@@ -51,7 +51,7 @@ import com.qualcomm.robotcore.util.Range;
  */
 
 @TeleOp(name="Concept: Latch TeleOp", group="Linear Opmode")
-//@Disabled
+@Disabled
 public class TestLatchOpMode extends LinearOpMode {
 
     // Declare OpMode members.

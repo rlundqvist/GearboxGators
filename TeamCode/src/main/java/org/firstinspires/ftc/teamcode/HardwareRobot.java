@@ -30,8 +30,13 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import java.util.concurrent.TimeUnit;
 import com.qualcomm.robotcore.util.Range;
+
+import com.qualcomm.robotcore.util.ElapsedTime;
+
 
 
 /**
@@ -54,9 +59,10 @@ public class HardwareRobot
     private static DcMotor rightFrontDrive = null;
     private static DcMotor rightBackDrive = null;
     private static DcMotor rackDrive = null;
+    private static DcMotor markerDrive = null;
 
     private static final double     COUNTS_PER_MOTOR_REV    = 1440 ;    // eg: TETRIX Motor Encoder
-    private static final double     DRIVE_GEAR_REDUCTION    = 2.0 ;     // This is < 1.0 if geared UP
+    private static final double     DRIVE_GEAR_REDUCTION    = 0.5 ;     // This is < 1.0 if geared UP
     private static final double     WHEEL_DIAMETER_INCHES   = 4.0 ;     // For figuring circumference
     private static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) / (WHEEL_DIAMETER_INCHES * 3.1415);
     // Example: One inch in forward motion = (1440 * 2) / (4 * 3.1415) = 229.2 encoder counts
@@ -70,7 +76,12 @@ public class HardwareRobot
     private static double lbPower = 0.0;
     private static double rfPower = 0.0;
     private static double rbPower = 0.0;
+    private static double rackPower = 0.0;
 
+    // TODO: Adjust if we ever get encoder drive to actually work
+    private static int newlfTarget = 0;
+    private static int newrfTarget = 0;
+    private static int newrackTarget = 0;
 
     // Local OpMode members.
     HardwareMap hwMap  =  null;
@@ -94,6 +105,7 @@ public class HardwareRobot
         rightFrontDrive = hwMap.get(DcMotor.class,"right_front_drive");
         rightBackDrive = hwMap.get(DcMotor.class,"right_back_drive");
         rackDrive = hwMap.get(DcMotor.class,"rack_drive");
+        markerDrive = hwMap.get(DcMotor.class, "marker_drive");
 
         // Most robots need the motor on one side to be reversed to drive forward
         // Reverse the motor that runs backwards when connected directly to the battery
@@ -102,6 +114,7 @@ public class HardwareRobot
         rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
         rightBackDrive.setDirection(DcMotor.Direction.FORWARD);
         rackDrive.setDirection(DcMotor.Direction.FORWARD);
+        markerDrive.setDirection(DcMotorSimple.Direction.FORWARD);
 
         // Set all motors to zero power
         leftFrontDrive.setPower(0);
@@ -109,38 +122,51 @@ public class HardwareRobot
         rightFrontDrive.setPower(0);
         rightBackDrive.setPower(0);
         rackDrive.setPower(0);
+        markerDrive.setPower(0);
 
         // Set all motors to run with encoders.
         // Need to use RUN_WITHOUT_ENCODERS if encoders are NOT installed.
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // TODO: Adjust when we have encoder cables and converters for back motors
+        //leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //leftBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //rightBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        markerDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     public void DriveStrafe(double drive, double strafe, double turn) {
         // Strafe Mode is similar to POV mode in that the movement is controlled by left stick and right stick turns.
         // Strafe Mode also supports moving sideways based on X movements of the left stick.
-        double lf = Range.clip(drive + turn + strafe, -1.0, 1.0);
-        double lb = Range.clip(drive + turn - strafe, -1.0, 1.0);
-        double rf = Range.clip(drive - turn - strafe, -1.0, 1.0);
-        double rb = Range.clip(drive - turn + strafe, -1.0, 1.0);
+        //double lf = Range.clip(drive + turn + strafe, -1.0, 1.0);
+        //double lb = Range.clip(drive + turn - strafe, -1.0, 1.0);
+        //double rf = Range.clip(drive - turn - strafe, -1.0, 1.0);
+        //double rb = Range.clip(drive - turn + strafe, -1.0, 1.0);
+        double lf = drive + turn + strafe;
+        double lb = drive + turn - strafe;
+        double rf = drive - turn - strafe;
+        double rb = drive - turn + strafe;
 
-        Drive(lf/3.0, lb, rf/3.0, rb);
+        Drive(lf, lb, rf, rb);
     }
 
     public void DrivePOV (double drive, double turn) {
         // POV Mode uses left stick to go forward, and right stick to turn.
         // This mode is easier to drive straight.
-        double lf = Range.clip(drive + turn, -1.0, 1.0);
-        double lb = Range.clip(drive + turn, -1.0, 1.0);
-        double rf = Range.clip(drive - turn, -1.0, 1.0);
-        double rb = Range.clip(drive - turn, -1.0, 1.0);
+        //double lf = Range.clip(drive + turn, -1.0, 1.0);
+        //double lb = Range.clip(drive + turn, -1.0, 1.0);
+        //double rf = Range.clip(drive - turn, -1.0, 1.0);
+        //double rb = Range.clip(drive - turn, -1.0, 1.0);
+        double lf = drive + turn;
+        double lb = drive + turn;
+        double rf = drive - turn;
+        double rb = drive - turn;
 
         Drive(lf, lb, rf, rb);
     }
@@ -185,6 +211,25 @@ public class HardwareRobot
     }
 
     public void encodeDrive(double speed, double lfInches, double lbInches, double rfInches, double rbInches){
+
+        leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        newlfTarget = leftFrontDrive.getCurrentPosition() + Math.abs((int)(lfInches * COUNTS_PER_INCH));
+        newrfTarget = rightFrontDrive.getCurrentPosition() + Math.abs((int)(rfInches * COUNTS_PER_INCH));
+
+        lfPower = lfInches > 0.0 ? speed : -speed;
+        rfPower = rfInches> 0.0 ? speed : -speed;
+        leftFrontDrive.setPower(lfPower);
+        rightFrontDrive.setPower(rfPower);
+
+
+ /*
         leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         // TODO: Adjust when we have encoder cables and converters for back motors
@@ -219,17 +264,29 @@ public class HardwareRobot
 
         leftFrontDrive.setPower(Math.abs(speed));
         rightFrontDrive.setPower(Math.abs(speed));
-
+*/
         // TODO: Adjust when we have encoder cables and converters for back motors
-        leftBackDrive.setPower(lbInches > 0.0 ? speed : -speed);
-        rightBackDrive.setPower(rbInches> 0.0 ? speed : -speed);
+        lbPower = lbInches > 0.0 ? speed : -speed;
+        rbPower = rbInches> 0.0 ? speed : -speed;
+        leftBackDrive.setPower(lbPower);
+        rightBackDrive.setPower(rbPower);
+        //leftBackDrive.setPower(lbInches > 0.0 ? speed : -speed);
+        //rightBackDrive.setPower(rbInches> 0.0 ? speed : -speed);
 
     }
 
     public boolean driveBusy(){
         // TODO: Adjust when we have encoder cables and converters for back motors
         //return (leftFrontDrive.isBusy() || leftBackDrive.isBusy() || rightFrontDrive.isBusy() || rightBackDrive.isBusy());
-        return (leftFrontDrive.isBusy() || rightFrontDrive.isBusy());
+
+        if ((Math.abs(leftFrontDrive.getCurrentPosition()) > newlfTarget) && (Math.abs(rightFrontDrive.getCurrentPosition()) > newrfTarget)) {
+            encodeDriveStop();
+            return false;
+        }
+        else {
+            return true;
+        }
+        //return (leftFrontDrive.isBusy() || rightFrontDrive.isBusy());
     }
 
     public void encodeDriveStop() {
@@ -238,15 +295,22 @@ public class HardwareRobot
         rightFrontDrive.setPower(0);
         rightBackDrive.setPower(0);
 
-        leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
         // TODO: Adjust when we have encoder cables and converters for back motors
+        //leftFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rightFrontDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //leftBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         //rightBackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     public void encodeRack(double speed, double inches) {
+        rackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        newrackTarget = rackDrive.getCurrentPosition() + Math.abs((int)(inches * COUNTS_PER_INCH));
+
+        rackPower = inches > 0.0 ? speed : -speed;
+        rackDrive.setPower(rackPower);
+
+/*
         rackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
@@ -259,16 +323,26 @@ public class HardwareRobot
         rackDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
         rackDrive.setPower(Math.abs(speed));
+*/
     }
 
     public void encodeRackStop (){
         rackDrive.setPower(0);
 
-        rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //rackDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
+
+
     public boolean rackBusy(){
-        return rackDrive.isBusy();
+        //return rackDrive.isBusy();
+        if (Math.abs(rackDrive.getCurrentPosition()) > newrackTarget) {
+            encodeRackStop();
+            return false;
+        }
+        else {
+            return true;
+        }
     }
 
     public double LeftFrontPower() {
@@ -287,16 +361,39 @@ public class HardwareRobot
         return rbPower;
     }
 
+    public double RackPower () {
+        return rackPower;
+    }
+
     public int ToLeftTarget(){
-        return (leftFrontDrive.getTargetPosition() - leftFrontDrive.getCurrentPosition());
+        return (newlfTarget - leftFrontDrive.getCurrentPosition());
+        //return (leftFrontDrive.getTargetPosition() - leftFrontDrive.getCurrentPosition());
     }
 
     public int ToRightTarget(){
-        return (rightFrontDrive.getTargetPosition() - rightFrontDrive.getCurrentPosition());
+        return (newrfTarget - rightFrontDrive.getCurrentPosition());
+        //return (rightFrontDrive.getTargetPosition() - rightFrontDrive.getCurrentPosition());
     }
 
     public int ToRackTarget() {
-        return (rackDrive.getTargetPosition()-rackDrive.getCurrentPosition());
+        return (newrackTarget -rackDrive.getCurrentPosition());
+        //return (rackDrive.getTargetPosition()-rackDrive.getCurrentPosition());
+    }
+
+    public void DropMarker() {
+        ElapsedTime runtime = new ElapsedTime();
+
+        markerDrive.setPower(0.3);
+
+        runtime.reset();
+        while (runtime.milliseconds()<250) {}
+
+        markerDrive.setPower(0.3);
+
+        runtime.reset();
+        while (runtime.milliseconds()<200) {}
+
+        markerDrive.setPower(0);
     }
 }
 
