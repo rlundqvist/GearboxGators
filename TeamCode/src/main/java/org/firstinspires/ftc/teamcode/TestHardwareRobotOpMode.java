@@ -90,6 +90,7 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
     private boolean wasY = false;
     private boolean wasLB = false;
     private boolean wasRB = false;
+    private boolean up = true;
     private HardwareRobot robot = new HardwareRobot();
 
 
@@ -298,6 +299,18 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
             double rackPower = gamepad1.right_trigger - gamepad1.left_trigger;
             robot.RackDrive(rackPower);
 
+            if(gamepad1.x)  {
+                if(up) {
+                    //Bring the rack down to compressed form
+                    robot.encodeRack(0.5, 4);
+                    up = !up;
+                }
+                else {
+                    //push the rack up to extended form
+                    robot.encodeRack(-0.5, 4);
+                    up = !up;
+                }
+            }
             // Show the elapsed game time and Drive Mode.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Mode", driveModeStr);

@@ -898,7 +898,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                     leg++;
                                     break;
                                 case 3:
-                                    robot.encodeDrive(TURN_SPEED, -2, -2, 2, 2);
+                                    robot.encodeDrive(TURN_SPEED, -3, -3, 3, 3);
                                     leg++;
                                 case 4:
                                     autoState = autoStates.MOVETO_SAMPLES;
@@ -1018,13 +1018,13 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                                 case 2: // Move forward to push gold mineral
                                     stateLabel = "Moving the Gold mineral - FORWARD";
-                                    robot.encodeDrive(DRIVE_SPEED, 10, 10, 10, 10);
+                                    robot.encodeDrive(DRIVE_SPEED, 8, 8, 8, 8);
                                     leg++;
                                     break;
 
                                 case 3: // Back up
                                     stateLabel = "Moving the Gold mineral - BACK";
-                                    robot.encodeDrive(DRIVE_SPEED, -10, -10, -10, -10);
+                                    robot.encodeDrive(DRIVE_SPEED, -8, -8, -8, -8);
                                     leg++;
                                     break;
 
@@ -1032,15 +1032,15 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                     stateLabel = "Moving the Gold mineral - TURN";
                                     if (goldIndex == 0) {
                                         // We are already turned 4 to the left, turn 8 more --> 12 total to the left
-                                        robot.encodeDrive(TURN_SPEED, -15, -15, 15, 15);
+                                        robot.encodeDrive(TURN_SPEED, -10, -10, 10, 10);
                                     }
                                     if (goldIndex == 1 || goldIndex == -1) {
                                         // We are straight, turn 12 to the left
-                                        robot.encodeDrive(TURN_SPEED, -21, -21, 21, 21);
+                                        robot.encodeDrive(TURN_SPEED, -16, -16, 16, 16);
                                     }
                                     if (goldIndex == 2) {
                                         // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
-                                        robot.encodeDrive(TURN_SPEED, -27, -27, 27, 27);
+                                        robot.encodeDrive(TURN_SPEED, -21, -21, 21, 21);
                                     }
                                     leg++;
                                     break;
@@ -1071,14 +1071,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 15000;
-/**
-                        if (xFactor == yFactor) {
-                            robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38.5, 38.5);
-                        } else {
-                            robot.encodeDrive(DRIVE_SPEED, 22.5, 22.5, 22.5, 22.5);
-                        }
-                        leg = 2;
- */
                         leg = 1;
 
                         // TODO: Move to alliance area...
@@ -1141,7 +1133,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                                     case 2: // Turn right
                                         stateLabel = "To Alliance - Turn";
-                                        robot.encodeDrive(TURN_SPEED, 30, 30, -30, -30);
+                                        robot.encodeDrive(TURN_SPEED, 19, 19, -19, -19);
                                         leg++;
                                         break;
 
@@ -1197,16 +1189,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 15000;
-/*
-                        if (xFactor == yFactor) {
-                            // We came from a start in front of the crater --> Turn around completely
-                            robot.encodeDrive(TURN_SPEED, -40, -40, 40, 40);
-                        } else {
-                            // We came from a start in front of the alliance zone, turn just a little bit
-                            robot.encodeDrive(TURN_SPEED, 20, 20, -20, -20);
-                        }
-                        leg = 2;
-                        */
                         leg = 1;
 
                         // TODO: Drive to crater
@@ -1231,7 +1213,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                         robot.encodeDrive(TURN_SPEED, -40, -40, 40, 40);
                                     } else {
                                         // We came from a start in front of the alliance zone, turn just a little bit
-                                        robot.encodeDrive(TURN_SPEED, 20, 20, -20, -20);
+                                        robot.encodeDrive(TURN_SPEED, 15, 15, -15, -15);
                                     }
                                     leg++;
                                     break;
@@ -1319,64 +1301,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
             telemetry.update();
         }
     }
-/**
-    void DriveForward (double milliseconds) {
-        ElapsedTime timer = new ElapsedTime();
 
-        robot.DrivePOV(FORWARD,0);
-
-        while (opModeIsActive() && (timer.milliseconds() < milliseconds)) {
-            UpdateTelemetryStatusTime("Drive Forward",timer.seconds());
-        }
-
-        robot.DrivePOV(0,0);
-    }
-
-    void DriveBackward (double milliseconds) {
-        ElapsedTime timer = new ElapsedTime();
-        robot.DrivePOV(BACKWARD, 0);
-
-        while (opModeIsActive() && (timer.milliseconds() < milliseconds)) {
-            UpdateTelemetryStatusTime("Drive Backward",timer.seconds());
-        }
-
-        robot.DrivePOV(0,0);
-    }
-
-    void TurnLeft (double milliseconds) {
-        ElapsedTime timer = new ElapsedTime();
-        robot.DrivePOV(0,LEFT);
-        while (opModeIsActive() && (timer.milliseconds() < milliseconds)) {
-            UpdateTelemetryStatusTime("Turn Left",timer.seconds());
-        }
-
-        robot.DrivePOV(0,0);
-    }
-
-    void TurnRight (double milliseconds) {
-        ElapsedTime timer = new ElapsedTime();
-        robot.DrivePOV(0,RIGHT);
-        while (opModeIsActive() && (timer.milliseconds() < milliseconds)) {
-            UpdateTelemetryStatusTime("Turn Right",timer.seconds());
-        }
-
-        robot.DrivePOV(0,0);
-    }
-
-    void UpdateTelemetryStatusTime(String status, double seconds) {
-        // Show the elapsed game time and Drive Mode.
-        telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Mode", status);
-        telemetry.addData("Path", "Leg 1: %2.5f S Elapsed", seconds);
-        telemetry.update();
-    }
-    void UpdateTelemetryStatus(String status) {
-        // Show the elapsed game time and Drive Mode.
-        telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Mode", status);
-
-        telemetry.update();
-    }
- **/
 
 }
