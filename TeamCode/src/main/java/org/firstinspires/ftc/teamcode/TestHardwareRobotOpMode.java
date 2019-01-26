@@ -74,7 +74,8 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
     private ElapsedTime runtime = new ElapsedTime();
 
     private enum DriveModes {POV, TANK, STRAFE, ENCODE}
-    private DriveModes driveMode = DriveModes.STRAFE;
+    private DriveModes
+            driveMode = DriveModes.STRAFE;
     private String driveModeStr = "STRAFE";
     private boolean strafeFound = false;
     private boolean povFound = false;
@@ -88,10 +89,14 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
     private boolean wasDRIGHT = false;
     private boolean wasX = false;
     private boolean wasY = false;
+    private boolean wasB  = false;
     private boolean wasLB = false;
     private boolean wasRB = false;
     private boolean up = true;
+    private boolean dropped = true;
     private HardwareRobot robot = new HardwareRobot();
+
+    private double rackEncoderSpot = 11463;
 
 
     @Override
@@ -144,14 +149,16 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
             double strafe;
 
             // Temporary variables tracking gampads
-            boolean isLB = false;
             boolean isRB = false;
+            boolean isLB = false;
+            boolean rackIsUp = true;
             boolean isDUP = false;
             boolean isDDOWN = false;
             boolean isDLEFT = false;
             boolean isDRIGHT = false;
             boolean isX = false;
             boolean isY = false;
+            boolean isB = false;
 
             // TODO: Define controller keys
 
@@ -251,8 +258,6 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
                     if((isDDOWN = gamepad1.dpad_down) && !wasDDOWN) robot.encodeDrive(0.1, -1, -1, -1, -1 );
                     if((isDLEFT = gamepad1.dpad_left) && !wasDLEFT) robot.encodeDrive(0.1, -1, -1, 1, 1 );
                     if((isDRIGHT = gamepad1.dpad_right) && !wasDRIGHT) robot.encodeDrive(0.1, 1, 1, -1, -1 );
-                    if((isLB = gamepad1.left_bumper) && !wasLB) robot.encodeRack(0.1, 1);
-                    if((isRB = gamepad1.right_bumper) && !wasRB) robot.encodeRack(0.1, -1);
                     break;
             }
 
@@ -293,24 +298,14 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
 
             if ((isX = gamepad1.a) && !wasX) {
                 //if (latchingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, latchingSoundID);
-                robot.DropMarker();
+                    robot.DropMarker(dropped);
+                    dropped = !dropped;
+
             }
 
             double rackPower = gamepad1.right_trigger - gamepad1.left_trigger;
             robot.RackDrive(rackPower);
 
-            if(gamepad1.x)  {
-                if(up) {
-                    //Bring the rack down to compressed form
-                    robot.encodeRack(0.5, 4);
-                    up = !up;
-                }
-                else {
-                    //push the rack up to extended form
-                    robot.encodeRack(-0.5, 4);
-                    up = !up;
-                }
-            }
             // Show the elapsed game time and Drive Mode.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Mode", driveModeStr);
@@ -321,14 +316,15 @@ public class TestHardwareRobotOpMode extends LinearOpMode {
             telemetry.update();
 
             // Save last button states
-            wasLB = isLB;
-            wasRB = isRB;
             wasDUP = isDUP;
             wasDDOWN = isDDOWN;
             wasDLEFT = isDLEFT;
             wasDRIGHT = isDRIGHT;
+            wasRB = isRB;
+            wasLB = isLB;
             wasY = isY;
             wasX = isX;
+            wasB = isB;
 
         }
         if (stopFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, stopSoundID);

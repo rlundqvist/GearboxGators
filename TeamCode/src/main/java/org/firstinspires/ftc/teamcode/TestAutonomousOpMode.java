@@ -161,7 +161,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static final String TFOD_MODEL_ASSET = "RoverRuckus.tflite";
     private static final String LABEL_GOLD_MINERAL = "Gold Mineral";
     private static final String LABEL_SILVER_MINERAL = "Silver Mineral";
-    private static final String VUFORIA_KEY = "AVQIvK3/////AAABmSpkdI0smUlNgdcjJD9G/vN7/679ySpR3GdwNzNg717pJ0chtCNh8z+aJVbw67Z6YMVMxURf0aqiGDxRnZEzzXsYpKXM7+iOkjQMEFkhHKzDqQTisuhPEMNaLWqnhLmu/Ejm7THmC4nKiRBHBNH4vxkaKg7nnUxpAVsuK4zsB+uo2Qk8DdixYVacY46ec/OkvYGsgJCpo3eVmaDDtKmQNnUti9KNUi8C0IhKKAVH3LLOaffxwKvSneEX8ys2rBx8DOyX+4yQGkqqKmFBVq2ACXLubogbIZsacofWSteEUM+kZT4I1VsNoZy/RUih5k0ioINE3Ze8bWSqQ5BBG0u7XkULQ/SDBocUPk4qBVNnLWQq";
+    private static final String VUFORIA_KEY = "AVQIvK3/////AAABmSpkdI0smUlNgdcjJD9G/vN7/679ySpR3GdwNzNg717pJ0chtCNh8z+aJVbw67Z6YMVMxURf0aqiGDxRnZEzzXsYpKXM7+iOkjQME" +
+            "FkhHKzDqQTisuhPEMNaLWqnhLmu/Ejm7THmC4nKiRBHBNH4vxkaKg7nnUxpAVsuK4zsB+uo2Qk8DdixYVacY46ec/OkvYGsgJCpo3eVmaDDtKmQNnUti9KNUi8C0IhKKAVH3LLOaffxwKvSneEX8" +
+            "ys2rBx8DOyX+4yQGkqqKmFBVq2ACXLubogbIZsacofWSteEUM+kZT4I1VsNoZy/RUih5k0ioINE3Ze8bWSqQ5BBG0u7XkULQ/SDBocUPk4qBVNnLWQq";
 
    // Store our instance of the Tensor Flow Object Detection engine.
     private TFObjectDetector tfod;
@@ -219,7 +221,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static double rollIMU;
     private static double mag;
 
-    private enum autoStates { LOWERING, DELATCHING, MOVETO_SAMPLES, IDENTIFY_GOLD, REMOVE_GOLD, MOVETO_ALLIANCE_ZONE, DROP_MARKER, MOVETO_CRATER, LOWER_ARM, FINISHED}
+    private enum autoStates { LOWERING, DELATCHING, MOVETO_SAMPLES, IDENTIFY_GOLD, REMOVE_GOLD, RECORRECT, MOVETO_ALLIANCE_ZONE, DROP_MARKER, MOVETO_CRATER, LOWER_ARM, FINISHED}
     private autoStates autoState = autoStates.LOWERING;
 
     private static boolean newState = true;
@@ -228,8 +230,8 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static double xFactor = 1.0;
     private static double yFactor = 1.0;
 
-    private static final double     DRIVE_SPEED             = 0.3;
-    private static final double     TURN_SPEED              = 0.3;
+    private static final double     DRIVE_SPEED             = 0.4;
+    private static final double     TURN_SPEED              = 0.6;
     private static final double     LOWER_SPEED             = 0.3;
 
     static private int leg = 1;
@@ -238,7 +240,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
     private static String startArea = "Unknown";
     private static String goldLocation = "Unknown";
 
-
+    private boolean isSounds = true;
 
     @Override
     public void runOpMode() {
@@ -593,12 +595,15 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 xFactor = 1;
                 yFactor = 1;
             }
+            if(gamepad1.right_bumper)
+                isSounds = !isSounds;
             telemetry.addData("State", "Start position %s", startArea);
             telemetry.addData("IMU","DONE");
             telemetry.addData("Vuforia", "DONE");
             telemetry.addData("Tensor Flow", "DONE");
             telemetry.addData("Sound Resources", "DONE");
             telemetry.addData("Robot", "DONE");
+            telemetry.addData("Sound FX status *TURN OFF WITH RIGHT BUMPER*", isSounds);
             telemetry.addData("TO CONTINUE", " -->> Press LEFT BUMPER <<--");
             telemetry.update();
         }
@@ -748,9 +753,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                     // How hany different objects can we see?
                     objectsDetected = updatedRecognitions.size();
 
-                    // If we recognize EXACTLY three objects
+                    // If we recognize EXACTLY two or three objects
                     // Check how they are ordered from Left to Right
-                    if (updatedRecognitions.size() == 3) {
+                    if ((objectsDetected == 3) || (objectsDetected == 3))  {
 
                         // First reset out index variables
                         // Value of -1 means we havent identified this object yet
@@ -780,6 +785,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                 // It must be a SILVER Mineral, but we had already found the first one
                                 // so this is the second. Set its index to this object.
                                 silverMineral2X = (int) recognition.getLeft();
+                                goldMineralX = 2;
                             }
 
                             // Note 1: If there are more than one Gold in the sample of three minerals
@@ -801,7 +807,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             // Remember where the gold is located
                             goldIndex = goldMineralX;
 
-                            if (mineralFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, mineralSoundID);
+                            if (mineralFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, mineralSoundID);
                         }
                     } else {
 
@@ -817,13 +823,13 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             // Is it a GOLD mineral?
                             if (recognition.getLabel().equals(LABEL_GOLD_MINERAL)) {
                                 numGold++;
-                                //if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
+                                //if (goldFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
                             }
 
                             // Is it a SILVER mineral?
                             if (recognition.getLabel().equals(LABEL_SILVER_MINERAL)) {
                                 numSilver++;
-                                //if (silverFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, silverSoundID);
+                                //if (silverFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, silverSoundID);
                             }
 
                         }
@@ -842,19 +848,19 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case LOWERING:
                     if (newState) {
                         stateLabel = "Lowering robot to ground";
-                        if (lowerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
+                        if (lowerFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, lowerSoundID);
                         newState = false;
 
-                        robot.encodeRack(LOWER_SPEED, 4.0);
+                        robot.encodeRack(LOWER_SPEED, -20000);
 
-                        timeOut = runtime.milliseconds() + 1000;
+                        timeOut = runtime.milliseconds() + 7000;
 
                     } else if (!robot.rackBusy() || (runtime.milliseconds()>timeOut)){
 
                         robot.encodeRackStop();
-
                         autoState = autoStates.DELATCHING;
                         newState = true;
+
                     }
                     break;
 
@@ -866,7 +872,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case DELATCHING:
                     if (newState) {
                         stateLabel = "Disconnecting from lunar latch";
-                        if (delatchFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
+                        if (delatchFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, delatchSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 10000;
 
@@ -885,7 +891,6 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         autoState = autoStates.MOVETO_SAMPLES;
                         newState = true;
 
-
                     } else {
                         if (!robot.driveBusy()) {
                             switch (leg) {
@@ -898,8 +903,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                     leg++;
                                     break;
                                 case 3:
-                                    robot.encodeDrive(TURN_SPEED, -3, -3, 3, 3);
+                                    robot.encodeDrive(TURN_SPEED, -2, -2, 2, 2);
                                     leg++;
+                                    break;
                                 case 4:
                                     autoState = autoStates.MOVETO_SAMPLES;
                                     newState = true;
@@ -918,7 +924,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case MOVETO_SAMPLES:
                     if (newState) {
                         stateLabel = "Moving to sampling-area";
-                        if (d2samplesFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
+                        if (d2samplesFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2samplesSoundID);
 
                         newState = false;
 
@@ -952,9 +958,9 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case IDENTIFY_GOLD:
                     if (newState) {
                         stateLabel = "Identifying where the Gold is";
-                        if (samplingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
+                        if (samplingFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, samplingSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 4000;
+                        timeOut = runtime.milliseconds() + 100;
 
                         // TODO: Determine if this state is really needed. Maybe we will have seen the gold before we get here?
                         // TODO: Or maybe we need to aim camera downwards to avoid seeing minerals in crater?
@@ -973,7 +979,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                             // We could NOT identify the gold so we will guess that it is in the middle position
                             goldIndex = 1;
 
-                        } else if (goldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
+                        } else if (goldFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, goldSoundID);
 
                     }
                     break;
@@ -985,7 +991,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case REMOVE_GOLD:
                     if (newState) {
                         stateLabel = "Moving the Gold mineral";
-                        if (movegoldFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
+                        if (movegoldFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, movegoldSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 10000;
                         leg = 1;
@@ -1000,60 +1006,151 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                     } else {
                         if (!robot.driveBusy()) {
-                            switch (leg) {
-                                case 1: // Make Appropriate Turn
-                                    stateLabel = "Moving the Gold mineral - CENTER";
-                                    if (goldIndex == 0) {
-                                        // Gold on the left - turn left
-                                        stateLabel = "Moving the Gold mineral - LEFT";
-                                        robot.encodeDrive(TURN_SPEED, -6, -6, 6, 6);
-                                    }
-                                    if (goldIndex == 2) {
-                                        // Gold on the right - rurn right
-                                        stateLabel = "Moving the Gold mineral - RIGHT";
-                                        robot.encodeDrive(TURN_SPEED, 6, 6, -6, -6);
-                                    }
-                                    leg++;
-                                    break;
+                            if (xFactor == yFactor) {
+                                switch (leg) {
+                                    case 1: // Make Appropriate Turn
+                                        stateLabel = "Moving the Gold mineral - CENTER";
+                                        if (goldIndex == 0) {
+                                            // Gold on the left - turn left
+                                            stateLabel = "Moving the Gold mineral - LEFT";
+                                            robot.encodeDrive(TURN_SPEED, -6, -6, 6, 6);
+                                        }
+                                        if (goldIndex == 2) {
+                                            // Gold on the right - rurn right
+                                            stateLabel = "Moving the Gold mineral - RIGHT";
+                                            robot.encodeDrive(TURN_SPEED, 6, 6, -6, -6);
+                                        }
+                                        leg++;
+                                        break;
 
-                                case 2: // Move forward to push gold mineral
-                                    stateLabel = "Moving the Gold mineral - FORWARD";
-                                    robot.encodeDrive(DRIVE_SPEED, 8, 8, 8, 8);
-                                    leg++;
-                                    break;
+                                    case 2: // Move forward to push gold mineral
+                                        stateLabel = "Moving the Gold mineral - FORWARD";
+                                        robot.encodeDrive(DRIVE_SPEED, 17);
+                                        leg++;
+                                        break;
 
-                                case 3: // Back up
-                                    stateLabel = "Moving the Gold mineral - BACK";
-                                    robot.encodeDrive(DRIVE_SPEED, -8, -8, -8, -8);
-                                    leg++;
-                                    break;
+                                    case 3: // Back up
+                                        stateLabel = "Moving the Gold mineral - BACK";
+                                        robot.encodeDrive(DRIVE_SPEED, -6);
+                                        leg++;
+                                        break;
 
-                                case 4: // Turn sideways
-                                    stateLabel = "Moving the Gold mineral - TURN";
-                                    if (goldIndex == 0) {
-                                        // We are already turned 4 to the left, turn 8 more --> 12 total to the left
-                                        robot.encodeDrive(TURN_SPEED, -10, -10, 10, 10);
-                                    }
-                                    if (goldIndex == 1 || goldIndex == -1) {
-                                        // We are straight, turn 12 to the left
-                                        robot.encodeDrive(TURN_SPEED, -16, -16, 16, 16);
-                                    }
-                                    if (goldIndex == 2) {
-                                        // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
-                                        robot.encodeDrive(TURN_SPEED, -21, -21, 21, 21);
-                                    }
-                                    leg++;
-                                    break;
+                                    case 4: // Turn sideways
+                                        stateLabel = "Moving the Gold mineral - TURN";
+                                        if (goldIndex == 0) {
+                                            // We are already turned 4 to the left, turn 8 more --> 12 total to the left
+                                            robot.encodeDrive(TURN_SPEED, -9, -9, 9, 9);
+                                        }
+                                        if (goldIndex == 1 || goldIndex == -1) {
+                                            // We are straight, turn 12 to the left
+                                            robot.encodeDrive(TURN_SPEED, -15, -15, 15, 15);
+                                        }
+                                        if (goldIndex == 2) {
+                                            // We are turned 4 to the right, turn 4+12=16 to the left --> 12 total to the left
+                                            robot.encodeDrive(TURN_SPEED, -20, -20, 20, 20);
+                                        }
+                                        leg++;
+                                        break;
 
-                                case 5: // Done turning
-                                    robot.encodeDriveStop();
+                                    case 5: // Done turning
+                                        robot.encodeDriveStop();
 
-                                    autoState = autoStates.MOVETO_ALLIANCE_ZONE;
-                                    newState = true;
+                                        autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                                        newState = true;
 
-                                    break;
+                                        break;
+                                }
+                            }
+                            else    {
+                                switch (leg) {
+                                    case 1: // Make Appropriate Turn
+                                        stateLabel = "Moving the Gold mineral - CENTER";
+                                        if (goldIndex == 0) {
+                                            // Gold on the left - turn left
+                                            stateLabel = "Moving the Gold mineral - LEFT";
+                                            robot.encodeDrive(TURN_SPEED, -6, -6, 6, 6);
+                                        }
+                                        if (goldIndex == 2) {
+                                            // Gold on the right - turn right
+                                            stateLabel = "Moving the Gold mineral - RIGHT";
+                                            robot.encodeDrive(TURN_SPEED, 6, 6, -6, -6);
+                                        }
+                                        leg++;
+                                        break;
+
+                                    case 2: // Move forward to push gold mineral
+                                        stateLabel = "Moving the Gold mineral - FORWARD";
+                                        if(goldIndex == 1)
+                                            robot.encodeDrive(DRIVE_SPEED, 15, 15, 15, 15);
+                                        else
+                                            robot.encodeDrive(DRIVE_SPEED, 16, 16, 16, 16);
+
+                                        leg++;
+                                        break;
+
+                                    case 3: // Done turning
+                                        robot.encodeDriveStop();
+                                        if(goldIndex==1)
+                                            autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                                        else
+                                            autoState = autoState.RECORRECT;
+                                        newState = true;
+
+                                        break;
+                                }
                             }
 
+                        }
+                    }
+                    break;
+
+                case RECORRECT:
+                    if (newState) {
+                        stateLabel = "Moving to Alliance Zone";
+                        if (d2allianceFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 15000;
+                        leg = 1;
+
+                        // TODO: Move to alliance area...
+                        // If we started in from of Alliance
+                        //  -   adjust angle based on goldindex
+                        //  -   drive into alliance depot
+                        // If we started in front of crater
+                        //  -   drive back
+                        //  -   turn based on goldIndex
+                        //  -   drive forward until close to wall
+                        //  -   turn left (x degrees)
+                        //  -   drive along wall into alliance depot
+                    }
+                    else if (runtime.milliseconds() > timeOut) {
+
+                        robot.encodeDriveStop();
+
+                        autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                        newState = true;
+
+                    } else {
+                        if (!robot.driveBusy()) {
+                                // Started in front of crater
+                                switch (leg) {
+                                    case 1: // Drive toward side of field
+                                        stateLabel = "To Alliance - Forward to side";
+                                        if(goldIndex == 2)
+                                            robot.encodeDrive(DRIVE_SPEED, -6, -6, 6, 6);
+                                        else if(goldIndex == 0)
+                                            robot.encodeDrive(DRIVE_SPEED, 6, 6, -6, -6);
+                                        leg++;
+                                        break;
+
+                                    case 2: // We have reached alliance depot
+                                        robot.encodeDriveStop();
+
+                                        autoState = autoStates.MOVETO_ALLIANCE_ZONE;
+                                        newState = true;
+
+                                        break;
+                            }
                         }
                     }
                     break;
@@ -1068,7 +1165,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case MOVETO_ALLIANCE_ZONE:
                     if (newState) {
                         stateLabel = "Moving to Alliance Zone";
-                        if (d2allianceFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
+                        if (d2allianceFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2allianceSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 15000;
                         leg = 1;
@@ -1098,19 +1195,19 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                 switch (leg) {
                                     case 1: // Drive toward side of field
                                         stateLabel = "To Alliance - Forward to side";
-                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38.5, 38.5);
+                                        robot.encodeDrive(DRIVE_SPEED, 42);
                                         leg++;
                                         break;
 
                                     case 2: // Turn left
                                         stateLabel = "To Alliance - Turn";
-                                        robot.encodeDrive(TURN_SPEED, -10, -10, 10, 10);
+                                        robot.encodeDrive(TURN_SPEED, -6.5, -6.5, 6.5, 6.5);
                                         leg++;
                                         break;
 
                                     case 3: // Drive into alliance depot
                                         stateLabel = "To Alliance - Forward to zone";
-                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38, 38);
+                                        robot.encodeDrive(DRIVE_SPEED, 37);
                                         leg++;
                                         break;
 
@@ -1127,23 +1224,14 @@ public class TestAutonomousOpMode extends LinearOpMode {
                                 switch (leg) {
                                     case 1: // Drive to the left past the minerals
                                         stateLabel = "To Alliance - Past Minerals";
-                                        robot.encodeDrive(DRIVE_SPEED, 22.5, 22.5, 22.5, 22.5);
+                                        if(goldIndex != 1)
+                                            robot.encodeDrive(DRIVE_SPEED, 19, 19, 19, 19);
+                                        else
+                                            robot.encodeDrive(DRIVE_SPEED, 18, 18, 18, 18);
                                         leg++;
                                         break;
 
-                                    case 2: // Turn right
-                                        stateLabel = "To Alliance - Turn";
-                                        robot.encodeDrive(TURN_SPEED, 19, 19, -19, -19);
-                                        leg++;
-                                        break;
-
-                                    case 3: // Drive to alliance zone
-                                        stateLabel = "To Alliance - Forward to zone";
-                                        robot.encodeDrive(DRIVE_SPEED, 38.5, 38.5, 38.5, 38.5);
-                                        leg++;
-                                        break;
-
-                                    case 4: // Have arrived to crater
+                                    case 2: // Have arrived to crater
                                         robot.encodeDriveStop();
 
                                         autoState = autoStates.DROP_MARKER;
@@ -1162,13 +1250,13 @@ public class TestAutonomousOpMode extends LinearOpMode {
                  * consider what happens if team marker is dropped from high level.
                  **********************************************************************************/
                 case DROP_MARKER:
-                    if (newState) {
+                    /*if (newState) {
                         stateLabel = "Dropping team marker";
-                        if (dropmarkerFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
+                        if (dropmarkerFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 5000;
 
-                        robot.DropMarker();
+                        robot.DropMarker(true);
 
                     } else if (runtime.milliseconds() > timeOut) {
 
@@ -1177,7 +1265,49 @@ public class TestAutonomousOpMode extends LinearOpMode {
                         autoState = autoStates.MOVETO_CRATER;
                         newState = true;
 
+                    }*/
+                    if (newState) {
+                        stateLabel = "Moving to Alliance Zone";
+                        if (dropmarkerFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, dropmarkerSoundID);
+                        newState = false;
+                        timeOut = runtime.milliseconds() + 5000;
+                        leg = 1;
                     }
+                    else if (runtime.milliseconds() > timeOut) {
+
+                        robot.encodeDriveStop();
+
+                        autoState = autoStates.DROP_MARKER;
+                        newState = true;
+
+                    } else {
+                        if (!robot.driveBusy()) {
+                            // Started in front of crater
+                            switch (leg) {
+                                case 1: // lower dropper
+                                    stateLabel = "Dropping Marker";
+                                    robot.DropMarker(true);
+                                    leg++;
+                                    break;
+
+                                case 2:
+                                    double markTime = runtime.milliseconds() + 250;
+                                    if(runtime.milliseconds() > markTime)
+                                        leg++;
+
+                                case 3: // lift dropper
+                                    stateLabel = "To Alliance - Turn";
+                                    robot.DropMarker(false, 100);
+                                    leg++;
+                                    break;
+                                case 4: // We have reached alliance depot
+                                    robot.encodeDriveStop();
+                                    autoState = autoStates.MOVETO_CRATER;
+                                    newState = true;
+                            }
+                        }
+                    }
+
                     break;
 
                 /**********************************************************************************
@@ -1186,7 +1316,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case MOVETO_CRATER:
                     if (newState) {
                         stateLabel = "Moving to crater";
-                        if (d2craterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
+                        if (d2craterFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, d2craterSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 15000;
                         leg = 1;
@@ -1206,30 +1336,53 @@ public class TestAutonomousOpMode extends LinearOpMode {
 
                     } else {
                         if (!robot.driveBusy()) {
-                            switch (leg) {
-                                case 1: // Turn towards crater
-                                    if (xFactor == yFactor) {
-                                        // We came from a start in front of the crater --> Turn around completely
-                                        robot.encodeDrive(TURN_SPEED, -40, -40, 40, 40);
-                                    } else {
-                                        // We came from a start in front of the alliance zone, turn just a little bit
-                                        robot.encodeDrive(TURN_SPEED, 15, 15, -15, -15);
-                                    }
-                                    leg++;
-                                    break;
+                            if(xFactor != yFactor) {
+                                switch (leg) {
+                                    case 1: // Turn towards crater
+                                            // We came from a start in front of the alliance zone, turn just a little bit
+                                            //previously 15 on left and negative 15 on right
+                                            robot.encodeDrive(TURN_SPEED, 9.75, 9.75, -9.75, -9.75);
+                                        leg++;
+                                        break;
 
-                                case 2: // Drive to crater
-                                    robot.encodeDrive(DRIVE_SPEED, 58, 58, 58, 58);
-                                    leg++;
-                                    break;
+                                    case 2: // Drive to crater
+                                        robot.encodeDrive(DRIVE_SPEED, -35);
+                                        leg++;
+                                        break;
 
-                                case 3: // We have reached crater
-                                    robot.encodeDriveStop();
+                                    case 3:
+                                        robot.encodeDrive(TURN_SPEED, -0.75, -0.75, 0.75, 0.75);
+                                        leg++;
+                                        break;
 
-                                    autoState = autoStates.LOWER_ARM;
-                                    newState = true;
+                                    case 4:
+                                        robot.encodeDrive(DRIVE_SPEED, -35);
+                                        leg++;
+                                        break;
+                                    case 5: // We have reached crater
+                                        robot.encodeDriveStop();
 
-                                    break;
+                                        autoState = autoStates.LOWER_ARM;
+                                        newState = true;
+
+                                        break;
+                                }
+                            }
+                            else    {
+                                switch (leg) {
+                                    case 1: // Drive to crater
+                                        robot.encodeDrive(DRIVE_SPEED, -68);
+                                        leg++;
+                                        break;
+
+                                    case 2: // We have reached crater
+                                        robot.encodeDriveStop();
+
+                                        autoState = autoStates.LOWER_ARM;
+                                        newState = true;
+
+                                        break;
+                                }
                             }
                         }
                     }
@@ -1241,10 +1394,10 @@ public class TestAutonomousOpMode extends LinearOpMode {
                  **********************************************************************************/
                 case LOWER_ARM:
                     if (newState) {
-                        stateLabel = "Lovering arm to crater";
-                        if (touchcraterFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
+                        stateLabel = "Lowering arm to crater";
+                        if (touchcraterFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, touchcraterSoundID);
                         newState = false;
-                        timeOut = runtime.milliseconds() + 5000;
+                        timeOut = runtime.milliseconds() + 0;
 
                         // TODO: Lower the collections mechanism so that we are ready for manual mode and so we are sure to touch crater
 
@@ -1263,7 +1416,7 @@ public class TestAutonomousOpMode extends LinearOpMode {
                 case FINISHED:
                     if (newState) {
                         stateLabel = "Waiting until autonomous is done";
-                        if (waitingFound) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
+                        if (waitingFound && isSounds) SoundPlayer.getInstance().startPlaying(hardwareMap.appContext, waitingSoundID);
                         newState = false;
                         timeOut = runtime.milliseconds() + 0;
                     } else if (runtime.milliseconds() > timeOut) {
@@ -1301,6 +1454,5 @@ public class TestAutonomousOpMode extends LinearOpMode {
             telemetry.update();
         }
     }
-
 
 }
